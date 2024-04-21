@@ -1,0 +1,7 @@
+# Static / Hard Coded Values
+PUBLIC_TOKEN = "B4C58CBC-5385-4E61-B5C2-46CE5AB1A686"
+CRF_FORMS_ID = 414
+CRF_FIELD_TEXT_ID = 3862
+CRF_FIELD_FILE_ID = 3863
+FILE_UID = "34216b43-e341-4b1b-abc4-ec4dcf7d61b1"
+base_url = "https://app.cro.ms/apiPROD/"

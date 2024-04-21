@@ -1,69 +1,140 @@
-from ultralytics import YOLO
+from classes.face_proposals import faceProposal
+from classes.motion_detector import motion_detection
+from classes.result_person_info import result_person_info
+from services.utils import get_last_row_info, initialize_people, is_time_outside_interval, rect_to_xyxy, update_people_img_bbox_info, append_string_to_csv
+import face_recognition
+import numpy as np
+from classes.predict import predictors
 import cv2
 
-import util
-from sort.sort import *
-from util import get_car, read_license_plate, write_csv
+append_string_to_csv("licenseCode Recognizer has been started...", 'log.csv')
 
+def main(stop_event, display_queue, faceRec_queue):
+    # load predictors
+    predictor = predictors()
+    #get known_faces and their encodings
+    known_face_names, known_face_encodings = predictor.person_photo_registration("known_faces")
+    print(known_face_names)
+    #load motion_detector
+    motion_detector = motion_detection()
 
-results = {}
+    img_foundFace = None
+    trackerId = None
+    people = {}
 
-mot_tracker = Sort()
+    while not stop_event.is_set():
 
-# load models
-coco_model = YOLO('yolov8n.pt')
-license_plate_detector = YOLO('./models/license_plate_detector.pt')
+        if not faceRec_queue.empty():
+            frame = faceRec_queue.get()
+            #motion detection algorithm
+            if motion_detector.motion_detected == False:
+                firstFrame, gray = motion_detector.first_frame_preparer(frame)
+                motion_detector.motion_checker(firstFrame, gray)
+            if motion_detector.motion_detected:
+                # body detection
+                predictor.predict_person(frame=frame)
+                # tracking algorithm
+                predictor.track_person()
+                #display frame
+                predictor.display_results(display_queue, frame, img_foundFace, trackerId)
+                #raw frame copy
+                defaultFrame = frame.copy()
+                #display function
+                #check if tracked obj is identified
+                #crop body from frame
+                cropped_images_info = predictor.crop_objects(defaultFrame)
+                if len(cropped_images_info) != 0:
+                    for trackerId, [img_person, bbox_person] in cropped_images_info.items():
+                        if img_person.size>0:
+                            #update new frame's incomings
+                            if not trackerId in people:
+                                people = initialize_people(people, trackerId, img_person, bbox_person)
+                            else:
+                                people = update_people_img_bbox_info(people, trackerId, img_person, bbox_person)
 
-# load video
-cap = cv2.VideoCapture('./sample.mp4')
+                            # cv2.imshow("img_person", img_person)
+                            # cv2.waitKey(1)
+                            
+                            #get updated person
+                            person = people[trackerId]
+                            if not person.face.isFaceIdentifiedProperly:
+                                person.img = img_person
+                                person.bbox = bbox_person
+                                #predict face
+                                bbox_face_proposals = predictor.predict_face(img_person)
+                                if bbox_face_proposals:
+                                    for bbox_face_proposal in bbox_face_proposals:
+                                        #initialize faceProposal at person.face
+                                        person.face.faceProposal = faceProposal()
+                                        #calculate and set bbox for face, defaultFrame and dlib  (dlib format is top, right, bottom, left. It's unusual format.)
+                                        #body_xyxy
+                                        person.face.faceProposal.bbox = rect_to_xyxy(bbox_face_proposal)
+                                        #defaultFrame_xyxy
+                                        person.face.faceProposal.set_bbox_defaultFrame(person.bbox)
+                                        #dlib top, right, bottom, left
+                                        person.face.faceProposal.bbox_dlib = [bbox_face_proposal]
+                                        #calculate and set img
+                                        person.face.faceProposal.crop_and_set_img_faceProposal(frame) #içerde .img e ekliyor.
 
-vehicles = [2, 3, 5, 7]
+                                        if person.face.faceProposal.img.size>13000:  #!!!IMPORTANT PARAMETER: adjust min & max face size from here!!!
+                                            cv2.imshow("face_cropped", person.face.faceProposal.img)
+                                            cv2.waitKey(1)
+                                            #log write
+                                            append_string_to_csv(f"license Plate is detected. tracker_id: {trackerId}", 'log.csv')
+                                            #convert img to dlib.face_descriptor() format
+                                            img_person = np.ascontiguousarray(img_person[:, :, ::-1])
+                                            #encode the face
+                                            person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(img_person, [bbox_face_proposal])) #TODO: xyxy formatını düzelt. 2kişi buldugunda sorun yaşamayalım.
+                                            #get binary list of matches according to the constraints
+                                            matches = face_recognition.compare_faces(known_face_encodings, person.face.faceProposal.encodedVector)
+                                            person.face.faceProposal.name = "Unknown"
+                                            #NOTE: Commented part which is below causes errors, due to multiple max (constraint: 0.6 face distance)
+                                            #NOTE: It can be manipulated to increase both accuracy and FP alarms.
 
-# read frames
-frame_nmr = -1
-ret = True
-while ret:
-    frame_nmr += 1
-    ret, frame = cap.read()
-    if ret:
-        results[frame_nmr] = {}
-        # detect vehicles
-        detections = coco_model(frame)[0]
-        detections_ = []
-        for detection in detections.boxes.data.tolist():
-            x1, y1, x2, y2, score, class_id = detection
-            if int(class_id) in vehicles:
-                detections_.append([x1, y1, x2, y2, score])
+                                            # # If a match was found in known_face_encodings, just use the first one.
+                                            # if True in matches:
+                                            #     first_match_index = matches.index(True)
+                                            #     name = known_face_names[first_match_index]
+                                            # Or instead, use the known face with the smallest distance to the new face
 
-        # track vehicles
-        track_ids = mot_tracker.update(np.asarray(detections_))
+                                            #calculate face distances between known_faces and our img
+                                            face_distances = face_recognition.face_distance(known_face_encodings, person.face.faceProposal.encodedVector)
+                                            #get the name of best match
+                                            best_match_index = np.argmin(face_distances)
+                                            if matches[best_match_index]:
+                                                person.face.faceProposal.name = known_face_names[best_match_index]
+                                                print(person.face.faceProposal.name)
+                                            #Stop point of face prediction 
+                                            if (person.face.isFaceIdentifiedProperly == False) and (person.face.faceProposal.name != "Unknown"):
+                                                #log write
+                                                append_string_to_csv(f'license Code has been read: \n{trackerId} : {person.face.faceProposal.name} ', 'log.csv')
+                                                #search 3 consecutive name return
+                                                person.face.face_finalizer.pop(0)
+                                                person.face.face_finalizer.append(person.face.faceProposal.name)
+                                                if person.face.face_finalizer[0] == person.face.face_finalizer[1] == person.face.face_finalizer[2]:
+                                                    
+                                                    last_time_recorded, lastFace = get_last_row_info('face_records.csv')
+                                                    #stop if the person found in 6 minutes #TODO:This adjustable parameter should be replaced according to inside-outside rules
+                                                    if lastFace != person.face.faceProposal.name or is_time_outside_interval(last_time_recorded):
+                                                        #log write and print new written name
+                                                        print(f'{person.face.faceProposal.name}    NEW FACE IS FOUND!!!')
+                                                        append_string_to_csv(f'{person.face.faceProposal.name}', 'face_records.csv')
+                                                        #set final variables into objects' attributes
+                                                        person.face.isFaceIdentifiedProperly = True
+                                                        person.set_findings()
+                                                        # API set requests
+                                                        info = result_person_info(person)
+                                                        info.set_img_base64()
+                                                        info.construct_body_info()
+                                                        info.construct_body_img()
+                                                        info.send_post_request('PostCRFormAnswersPublic')
+                                                        info.send_post_request('PostCRFormAnswersPublicFileUpload')
+                #if body cant be found by model, then return to motion detection algorithm
+                else:
+                    motion_detector.set_motion_detected(False)
+                                                    
 
-        # detect license plates
-        license_plates = license_plate_detector(frame)[0]
-        for license_plate in license_plates.boxes.data.tolist():
-            x1, y1, x2, y2, score, class_id = license_plate
-
-            # assign license plate to car
-            xcar1, ycar1, xcar2, ycar2, car_id = get_car(license_plate, track_ids)
-
-            if car_id != -1:
-
-                # crop license plate
-                license_plate_crop = frame[int(y1):int(y2), int(x1): int(x2), :]
-
-                # process license plate
-                license_plate_crop_gray = cv2.cvtColor(license_plate_crop, cv2.COLOR_BGR2GRAY)
-                _, license_plate_crop_thresh = cv2.threshold(license_plate_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
-
-                # read license plate number
-                license_plate_text, license_plate_text_score = read_license_plate(license_plate_crop_thresh)
-
-                if license_plate_text is not None:
-                    results[frame_nmr][car_id] = {'car': {'bbox': [xcar1, ycar1, xcar2, ycar2]},
-                                                  'license_plate': {'bbox': [x1, y1, x2, y2],
-                                                                    'text': license_plate_text,
-                                                                    'bbox_score': score,
-                                                                    'text_score': license_plate_text_score}}
-
+cv2.destroyAllWindows()
 # write results
-write_csv(results, './test.csv')
+append_string_to_csv("license Code Recognition system has been shut down.", 'log.csv')
+
