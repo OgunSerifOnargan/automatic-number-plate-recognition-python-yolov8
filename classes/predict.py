@@ -26,25 +26,20 @@ class predictors:
         #Predictor: Face
         self.name = None
 
-    def predict_person(self, frame):
-        self.yoloResult = self.person_detector.predict(frame, verbose=False)[0]
+    def predict_person(self, frame, people):
+        self.yoloResult = self.person_detector.predict(frame, verbose=False, device="mps")[0]
         detections_tracking = sv.Detections.from_ultralytics(self.yoloResult)
-        detections_filtered = detections_tracking[np.isin(detections_tracking.class_id, self.person_list)]
-        if detections_filtered.tracker_id != None:
-            labels = [
-                f"#{tracker_id} {self.person_detector.model.names[class_id]} {confidence:0.2f}"
-                for confidence, class_id, tracker_id
-                in zip(detections_filtered.confidence, detections_filtered.class_id, detections_filtered.tracker_id)
-            ]
-        else:
-            labels = []
-        self.trackingResult = detections_filtered
-        self.trackingResult_labels = labels
-        return detections_filtered
-    
-    def track_person(self):
-        # tracking algorithm
+        self.trackingResult = detections_tracking[np.isin(detections_tracking.class_id, self.person_list)]
         self.trackingResult = self.tracker.update_with_detections(self.trackingResult)
+        self.trackingResult_labels = []
+        for confidence, class_id, tracker_id in zip(self.trackingResult.confidence, self.trackingResult.class_id, self.trackingResult.tracker_id):
+            if tracker_id in people:
+                if people[tracker_id].face.name != None:
+                    self.trackingResult_labels.append(f"#{tracker_id} {people[tracker_id].face.name} {confidence:0.2f}")
+                else:
+                    self.trackingResult_labels.append(f"#{tracker_id} {self.person_detector.model.names[class_id]} {confidence:0.2f}")
+            else:
+                self.trackingResult_labels.append(f"#{tracker_id} {self.person_detector.model.names[class_id]} {confidence:0.2f}")
     
     def predict_face(self, img_person_body):
         if not img_person_body.shape[1] == 0:
@@ -83,7 +78,7 @@ class predictors:
         return known_face_names, known_face_encodings
     
 
-    def display_results(self, display_queue, frame, img_foundFace, trackerId):
+    def display_results(self, display_queue, frame):
         #Log Display
         rows_in_interval = _get_rows_in_interval("Face_records.csv")
         # Display rows on top right corner of the frame
@@ -91,9 +86,6 @@ class predictors:
         # person Annotator
         self.annotate_people(display_frame)
         #Face Image Displayer
-        if img_foundFace is not None:
-            self.person_annotated_frame = _add_image_to_top_right(self.person_annotated_frame, img_foundFace, self.trackingResult.xyxy, trackerId)
-
         display_queue.put(self.person_annotated_frame)
     
     def crop_objects(self, image):

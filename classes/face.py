@@ -11,7 +11,7 @@ class face:
         self.name = None
         
         self.face_finalizer = ['', '', '']
-        self.consecutive_count = 0 
+        self.unknown_count = 0 
         self.isFaceIdentifiedProperly = False
     
     def set_encodedVector(self, encodedVector):
