@@ -12,65 +12,24 @@ from main import main
 from services.recordingServices import record_frames
 from services.utils import append_string_to_csv
 
-def main_mp():
-    faceRec_queue = multiprocessing.Queue(maxsize=2)
-    display_queue = multiprocessing.Queue(maxsize=2)
-    #recording_queue = multiprocessing.Queue(maxsize=100000)
-    stop_event = multiprocessing.Event()
-
-    recorder_option = "/Users/onarganogun/Desktop/Work/content_persona_ai/content_persona_ai/Warden/sample_video_0.mp4"
-    display_option = 1
-    mode_option = 2
-    append_string_to_csv("person Location Checker has been started...", 'log.csv')
-
-    frame_collector_process = multiprocessing.Process(target=collect_frames, 
-                                                        args=(stop_event, display_queue, faceRec_queue, recorder_option))
-
-    face_rec_process = multiprocessing.Process(target=main,
-                                                args=(stop_event, display_queue, faceRec_queue))
-    # recording_process = multiprocessing.Process(target=record_frames,
-    #                                             args =(stop_event, recording_queue))
-    display_process = multiprocessing.Process(target= display_frames,
-                                                args=(stop_event, display_queue))
-    
-
-    frame_collector_process.start()
-    face_rec_process.start()
-    if display_option == 1:
-        display_process.start()
-
-    #region Stop Condition
-        try:
-            while True:
-                time.sleep(0.0000000001)
-            
-        except KeyboardInterrupt:
-            stop_event.set()
-            frame_collector_process.join()
-            face_rec_process.join()
-            if display_option == 1: 
-                display_process.join()
-
-    #endregion
-
-
 if __name__ == '__main__':
     st_ins_main = time.time() 
-    faceRec_queue = multiprocessing.Queue(maxsize=2)
-    display_queue = multiprocessing.Queue(maxsize=2)
-    #recording_queue = multiprocessing.Queue(maxsize=100000)
+    faceRec_queue = multiprocessing.Queue(maxsize=1)
+    display_queue = multiprocessing.Queue(maxsize=1)
+#    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
 
-    recorder_option = "/Users/onarganogun/Desktop/Work/content_persona_ai/content_persona_ai/Warden/sample_video_0.mp4"
+    recorder_option = "rtsp://192.168.1.101"
     display_option = 1
     mode_option = 2
+    time_test = 0
     append_string_to_csv("person Location Checker has been started...", 'log.csv')
 
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
                                                         args=(stop_event, display_queue, faceRec_queue, recorder_option))
 
     face_rec_process = multiprocessing.Process(target=main,
-                                                args=(stop_event, display_queue, faceRec_queue))
+                                                args=(stop_event, time_test, display_queue, faceRec_queue))
     # recording_process = multiprocessing.Process(target=record_frames,
     #                                             args =(stop_event, recording_queue))
     display_process = multiprocessing.Process(target= display_frames,

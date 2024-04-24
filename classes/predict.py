@@ -6,12 +6,20 @@ import os
 import cv2
 from datetime import datetime
 import csv
-
+from ultralight_face_detector.vision.ssd.mb_tiny_RFB_fd import create_Mb_Tiny_RFB_fd, create_Mb_Tiny_RFB_fd_predictor
+from ultralight_face_detector.vision.ssd.config.fd_config import define_img_size
 class predictors:
     def __init__(self):
-        #Predictor: Body
+    #Predictor: Body
+    #Person Detector
         self.person_detector = YOLO('models/yolov8n.pt')
         self.person_list = [0]
+    #Face Detector
+        #YOLO
+        self.face_detector = YOLO("/Users/onarganogun/Downloads/best.pt")
+        #Ultralight
+        self.lightweight_predictor = load_lightweight_model()
+
         self.box_annotator = sv.BoxAnnotator(thickness=2, text_thickness=2, text_scale=1)
         #Results: Body
         self.yoloResult = None
@@ -44,14 +52,25 @@ class predictors:
     def predict_face(self, img_person_body):
         if not img_person_body.shape[1] == 0:
             face_locations = face_recognition.face_locations(img_person_body, model="hog")
-            print(face_locations)
+            return face_locations
+        else:
+            return None
+        
+    def predict_face_ultralight(self, img_person_body):
+        if not img_person_body.shape[1] == 0:
+            boxes, labels, probs = self.lightweight_predictor.predict(img_person_body, 1, 0.70)
+        return boxes
+    
+    def predict_face_yolo(self, img_person_body):
+        if not img_person_body.shape[1] == 0:
+            result = self.face_detector(img_person_body, verbose=False, device="mps")
+            face_locations = result[0].boxes.xyxy
             return face_locations
         else:
             return None
         
     def annotate_people(self, frame):
         self.person_annotated_frame = self.box_annotator.annotate(scene=frame, detections=self.trackingResult, labels=self.trackingResult_labels)
-
 
     def person_photo_registration(self, folder_path):
         known_face_encodings = []
@@ -77,7 +96,6 @@ class predictors:
                     print(f"Skipping {filename} as it doesn't contain exactly one face.")
         return known_face_names, known_face_encodings
     
-
     def display_results(self, display_queue, frame):
         #Log Display
         rows_in_interval = _get_rows_in_interval("Face_records.csv")
@@ -98,8 +116,46 @@ class predictors:
 
             cropped_images_info[tracker_id] = [cropped_image, cropped_bbox]
         return cropped_images_info
+    
+    def person_photo_registration_yolo(self, folder_path):
+        known_face_encodings = []
+        known_face_names = []
+
+        # Loop through all files in the folder
+        for filename in os.listdir(folder_path):
+            if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png") or filename.endswith(".JPG"):
+                # Load the image
+                image_path = os.path.join(folder_path, filename)
+                person_image = face_recognition.load_image_file(image_path)
+
+                # Extract face encoding
+                face_encoding = face_recognition.face_encodings(person_image)
+                
+                # Ensure that the image contains exactly one face
+                if len(face_encoding) == 1:
+                    known_face_encodings.append(face_encoding[0])
+                    
+                    # Extract the name from the filename (excluding the extension)
+                    known_face_names.append(os.path.splitext(filename)[0])
+                else:
+                    print(f"Skipping {filename} as it doesn't contain exactly one face.")
+        return known_face_names, known_face_encodings
+    
+    
 
 
+
+
+
+
+def load_lightweight_model():
+    define_img_size(640)
+    label_path = "ultralight_face_detector/models/voc-model-labels.txt"
+    class_names = [name.strip() for name in open(label_path).readlines()]
+    net = create_Mb_Tiny_RFB_fd(len(class_names), is_test=True)
+    lightweight_predictor = create_Mb_Tiny_RFB_fd_predictor(net, candidate_size=1500)
+    net.load("ultralight_face_detector/models/pretrained/version-RFB-320.pth")
+    return lightweight_predictor
 
 def _display_rows_on_frame(rows, frame):
     y_offset = 120  # Starting y-coordinate for displaying text
@@ -157,3 +213,10 @@ def _get_rows_in_interval(csv_file):
             if difference < 60:
                 rows_in_interval.append(row)
     return rows_in_interval
+
+
+
+
+
+
+
