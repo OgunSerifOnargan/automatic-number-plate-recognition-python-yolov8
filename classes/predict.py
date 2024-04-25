@@ -6,6 +6,7 @@ import os
 import cv2
 from datetime import datetime
 import csv
+from services.utils import get_objects_within_time_interval
 from ultralight_face_detector.vision.ssd.mb_tiny_RFB_fd import create_Mb_Tiny_RFB_fd, create_Mb_Tiny_RFB_fd_predictor
 from ultralight_face_detector.vision.ssd.config.fd_config import define_img_size
 class predictors:
@@ -33,9 +34,10 @@ class predictors:
         self.person_annotated_frame = None
         #Predictor: Face
         self.name = None
+        self.known_face_names, self.known_face_encodings = self.person_photo_registration("known_faces")
 
     def predict_person(self, frame, people):
-        self.yoloResult = self.person_detector.predict(frame, verbose=False, device="mps")[0]
+        self.yoloResult = self.person_detector.predict(frame, verbose=False)[0]
         detections_tracking = sv.Detections.from_ultralytics(self.yoloResult)
         self.trackingResult = detections_tracking[np.isin(detections_tracking.class_id, self.person_list)]
         self.trackingResult = self.tracker.update_with_detections(self.trackingResult)
@@ -63,7 +65,7 @@ class predictors:
     
     def predict_face_yolo(self, img_person_body):
         if not img_person_body.shape[1] == 0:
-            result = self.face_detector(img_person_body, verbose=False, device="mps")
+            result = self.face_detector(img_person_body, verbose=False)
             face_locations = result[0].boxes.xyxy
             return face_locations
         else:
@@ -96,11 +98,11 @@ class predictors:
                     print(f"Skipping {filename} as it doesn't contain exactly one face.")
         return known_face_names, known_face_encodings
     
-    def display_results(self, display_queue, frame):
+    def display_results(self, display_queue, frame, people):
         #Log Display
-        rows_in_interval = _get_rows_in_interval("Face_records.csv")
+        people_in_time_interval = get_objects_within_time_interval(people, 30)
         # Display rows on top right corner of the frame
-        display_frame = _display_rows_on_frame(rows_in_interval, frame)
+        display_frame = _display_rows_on_frame(people_in_time_interval, frame)
         # person Annotator
         self.annotate_people(display_frame)
         #Face Image Displayer
@@ -141,9 +143,21 @@ class predictors:
                     print(f"Skipping {filename} as it doesn't contain exactly one face.")
         return known_face_names, known_face_encodings
     
-    
-
-
+    def identify_face(self, person):
+        #encode the face
+        person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), 
+                                                                                          [person.face.faceProposal.dlib_bbox]))
+        #get binary list of matches according to the constraints
+        matches = face_recognition.compare_faces(self.known_face_encodings, person.face.faceProposal.encodedVector)
+        person.face.faceProposal.name = "Unknown"
+        #calculate face distances between known_faces and our img
+        face_distances = face_recognition.face_distance(self.known_face_encodings, person.face.faceProposal.encodedVector)
+        #get the name of best match
+        best_match_index = np.argmin(face_distances)
+        print(face_distances[best_match_index])
+        if matches[best_match_index] and face_distances[best_match_index]<=0.60:
+            person.face.faceProposal.name = self.known_face_names[best_match_index]
+        return person
 
 
 
@@ -157,11 +171,12 @@ def load_lightweight_model():
     net.load("ultralight_face_detector/models/pretrained/version-RFB-320.pth")
     return lightweight_predictor
 
-def _display_rows_on_frame(rows, frame):
+def _display_rows_on_frame(people_in_interval, frame):
     y_offset = 120  # Starting y-coordinate for displaying text
-    for i, row in enumerate(rows):
-        text = f"{row['Time']}: {row['Data']}"
-        frame = cv2.putText(frame, text, (15, y_offset + i * 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
+    for i, person in enumerate(people_in_interval):
+        if person.name != None:
+            text = f"{person.detection_time}: {person.name}"
+            frame = cv2.putText(frame, text, (15, y_offset + i * 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
     return frame
 
 def _add_image_to_top_right(image1, image2, desired_bbox=None, trackId_foundFace=None):
@@ -193,26 +208,6 @@ def _add_image_to_top_right(image1, image2, desired_bbox=None, trackId_foundFace
         return image1
     else:
         return image1 
-
-def _get_rows_in_interval(csv_file):
-    if not os.path.isfile(csv_file):
-        print(f"File '{csv_file}' does not exist. Creating...")
-        with open(csv_file, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(['Time', 'Data'])  # Write header to the CSV file
-            print(f"File '{csv_file}' created.")
-    time1 = datetime.now()
-    rows_in_interval = []
-    with open(csv_file, 'r') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            time_str = row['Time']
-            time2 = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
-
-            difference = (time1 - time2).total_seconds()
-            if difference < 60:
-                rows_in_interval.append(row)
-    return rows_in_interval
 
 
 

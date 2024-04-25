@@ -5,6 +5,8 @@ class motion_detection():
     def __init__(self):
         self.min_area = 100
         self.motion_detected = True
+        self.previous_frame = None
+        self.current_frame = None
 
     def set_motion_detected(self, state):
         self.motion_detected = state

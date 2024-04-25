@@ -89,9 +89,21 @@ def append_string_to_csv(input_string, csv_file):
         # Write time and string as a new row
         writer.writerow([current_time, input_string])
 
-
 def generate_uid():
     """
     Generate a UUID (Universally Unique Identifier).
     """
     return uuid.uuid4()
+
+def get_objects_within_time_interval(people, interval_seconds):
+    current_time = datetime.now()
+    objects_within_interval = []
+    for trackerId, person_obj in people.items():
+        try:
+            detection_time = datetime.strptime(person_obj['detection_time'], "%Y-%m-%d %H:%M:%S")
+        except:
+            detection_time = datetime.strptime(person_obj.detection_time, "%Y-%m-%d %H:%M:%S")
+        time_difference = current_time - detection_time
+        if time_difference.total_seconds() <= interval_seconds:
+            objects_within_interval.append(person_obj)
+    return objects_within_interval

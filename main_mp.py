@@ -6,44 +6,47 @@
 #TODO: DB'de girdi çıktı yapısını kur
 
 import multiprocessing, time
+from classes.result_person_info import post_results_MP
+from services.db_utils import create_json, reassign_tracker_ids
 from services.displayServices import display_frames
 from services.frameCollectionServices import collect_frames
 from main import main
 from services.recordingServices import record_frames
 from services.utils import append_string_to_csv
+import supervision as sv
 
 if __name__ == '__main__':
-    st_ins_main = time.time() 
     faceRec_queue = multiprocessing.Queue(maxsize=1)
     display_queue = multiprocessing.Queue(maxsize=1)
+    post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-
-    recorder_option = "rtsp://192.168.1.101"
+    recorder_option = 0
+    #"rtsp://192.168.1.101"
     display_option = 1
     mode_option = 2
     time_test = 0
+    model_name = "yolo"
+    line_zone_annotator = sv.LineZoneAnnotator(thickness=4, text_thickness=4, text_scale=2)
     append_string_to_csv("person Location Checker has been started...", 'log.csv')
+    create_json("db_json")
+    reassign_tracker_ids("db_json")
 
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
-                                                        args=(stop_event, display_queue, faceRec_queue, recorder_option))
-
+                                                        args=(stop_event, faceRec_queue, recorder_option))
     face_rec_process = multiprocessing.Process(target=main,
-                                                args=(stop_event, time_test, display_queue, faceRec_queue))
-    # recording_process = multiprocessing.Process(target=record_frames,
-    #                                             args =(stop_event, recording_queue))
+                                                args=(stop_event, time_test, model_name, display_queue, faceRec_queue, post_queue))
     display_process = multiprocessing.Process(target= display_frames,
                                                 args=(stop_event, display_queue))
-    
-
+    post_process = multiprocessing.Process(target=post_results_MP,
+                                           args=(stop_event, post_queue))
     frame_collector_process.start()
     face_rec_process.start()
+    post_process.start()
     if display_option == 1:
         display_process.start()
 
     #region Stop Condition
-    et_ins_main = time.time() 
-    print(f'Main installation is done in {et_ins_main-st_ins_main}')
     try:
         while True:
             time.sleep(0.0000000001)
@@ -52,6 +55,7 @@ if __name__ == '__main__':
         stop_event.set()
         frame_collector_process.join()
         face_rec_process.join()
+        post_process.join()
         if display_option == 1: 
             display_process.join()
 
