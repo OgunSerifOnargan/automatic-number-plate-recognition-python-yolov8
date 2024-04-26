@@ -14,6 +14,7 @@ from main import main
 from services.recordingServices import record_frames
 from services.utils import append_string_to_csv
 import supervision as sv
+from tools.coords_getter_v3 import get_coords
 
 if __name__ == '__main__':
     faceRec_queue = multiprocessing.Queue(maxsize=1)
@@ -21,21 +22,27 @@ if __name__ == '__main__':
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = 0
-    #"rtsp://192.168.1.101"
+    recorder_option = "rtsp://192.168.1.103"
     display_option = 1
     mode_option = 2
     time_test = 0
     model_name = "yolo"
-    line_zone_annotator = sv.LineZoneAnnotator(thickness=4, text_thickness=4, text_scale=2)
     append_string_to_csv("person Location Checker has been started...", 'log.csv')
     create_json("db_json")
     reassign_tracker_ids("db_json")
 
+
+    lines = get_coords(recorder_option, lineCounter=True)
+    lines_sv = []
+    for i, line in enumerate(lines):
+        LINE_START = sv.Point(line[0][0], line[0][1])
+        LINE_END = sv.Point(line[1][0], line[1][1])
+        lines_sv.append([LINE_START, LINE_END])
+
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
                                                         args=(stop_event, faceRec_queue, recorder_option))
     face_rec_process = multiprocessing.Process(target=main,
-                                                args=(stop_event, time_test, model_name, display_queue, faceRec_queue, post_queue))
+                                                args=(stop_event, model_name, lines_sv, display_queue, faceRec_queue, post_queue))
     display_process = multiprocessing.Process(target= display_frames,
                                                 args=(stop_event, display_queue))
     post_process = multiprocessing.Process(target=post_results_MP,

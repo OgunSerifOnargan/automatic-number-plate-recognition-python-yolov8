@@ -4,11 +4,10 @@ import numpy as np
 import face_recognition
 import os
 import cv2
-from datetime import datetime
-import csv
 from services.utils import get_objects_within_time_interval
 from ultralight_face_detector.vision.ssd.mb_tiny_RFB_fd import create_Mb_Tiny_RFB_fd, create_Mb_Tiny_RFB_fd_predictor
 from ultralight_face_detector.vision.ssd.config.fd_config import define_img_size
+from supervision.detection.core import Detections
 class predictors:
     def __init__(self):
     #Predictor: Body
@@ -30,7 +29,9 @@ class predictors:
         self.tracker = sv.ByteTrack(track_thresh=0.25, track_buffer=30, match_thresh=0.8, frame_rate=30)
         #Results: Tracking
         self.trackingResult = None
+        self.modified_solo_detection_for_lineCounter = None
         self.trackingResult_labels = None
+        self.solo_detections_dict = {}
         self.person_annotated_frame = None
         #Predictor: Face
         self.name = None
@@ -73,7 +74,7 @@ class predictors:
         
     def annotate_people(self, frame):
         self.person_annotated_frame = self.box_annotator.annotate(scene=frame, detections=self.trackingResult, labels=self.trackingResult_labels)
-
+        
     def person_photo_registration(self, folder_path):
         known_face_encodings = []
         known_face_names = []
@@ -106,6 +107,7 @@ class predictors:
         # person Annotator
         self.annotate_people(display_frame)
         #Face Image Displayer
+
         display_queue.put(self.person_annotated_frame)
     
     def crop_objects(self, image):
@@ -158,9 +160,20 @@ class predictors:
         if matches[best_match_index] and face_distances[best_match_index]<=0.60:
             person.face.faceProposal.name = self.known_face_names[best_match_index]
         return person
-
-
-
+    
+    def separate_detections(self, people, trackerId):
+        for i in range(len(self.trackingResult.xyxy)):
+            if self.trackingResult.tracker_id[i:i+1][0] == trackerId:
+                solo_detection = Detections(
+                    xyxy=self.trackingResult.xyxy[i:i+1],
+                    confidence=self.trackingResult.confidence[i:i+1],
+                    class_id=self.trackingResult.class_id[i:i+1],
+                    tracker_id=self.trackingResult.tracker_id[i:i+1],
+                    # other attributes if needed
+                )
+                print(self.trackingResult.tracker_id[i:i+1][0])
+                people[self.trackingResult.tracker_id[i:i+1][0]].solo_detection = solo_detection
+        return people
 
 def load_lightweight_model():
     define_img_size(640)

@@ -5,8 +5,8 @@ import csv
 from datetime import datetime
 import os
 
-def initialize_people(people_dict, trackerId, img_person, bbox_person):
-    people_dict[trackerId] = person(img_person, bbox_person)
+def initialize_people(people_dict, trackerId, img_person, bbox_person, lines_cv):
+    people_dict[trackerId] = person(img_person, bbox_person, lines_cv[0][0], lines_cv[0][1])
     append_string_to_csv(f"A person is detected. tracker_id: {trackerId}.", 'log.csv')
     return people_dict
     
