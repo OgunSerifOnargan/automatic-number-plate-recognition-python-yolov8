@@ -23,6 +23,7 @@ class person:
 
     def set_findings(self):
         self.face.isFaceIdentifiedProperly = True
+        self.face.identification_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.name = self.face.faceProposal.name
         self.face.name = self.face.faceProposal.name
         self.face.img = self.face.faceProposal.img
@@ -66,8 +67,6 @@ class person:
             x2_new = np.array(x_mean + (w/5))
             y1_new = np.array(y_mean + (h/2.2))
             y2_new = np.array(y_mean + (h/2))
-        print(x1_new)
-        print(int(x1_new))
         frame = cv2.rectangle(frame, (int(x1_new), int(y1_new)), (int(x2_new), int(y2_new)), (0, 0, 255), 2)  # (0, 0, 255) is BGR color (red), 2 is thickness
         self.modified_solo_detection_for_lineCounter = copy.deepcopy(self.solo_detection)
         self.modified_solo_detection_for_lineCounter.xyxy[0][0] = x1_new

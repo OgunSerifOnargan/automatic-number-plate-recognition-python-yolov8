@@ -171,7 +171,6 @@ class predictors:
                     tracker_id=self.trackingResult.tracker_id[i:i+1],
                     # other attributes if needed
                 )
-                print(self.trackingResult.tracker_id[i:i+1][0])
                 people[self.trackingResult.tracker_id[i:i+1][0]].solo_detection = solo_detection
         return people
 

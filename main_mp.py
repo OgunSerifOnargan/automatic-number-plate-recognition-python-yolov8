@@ -22,7 +22,7 @@ if __name__ == '__main__':
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = "rtsp://192.168.1.103"
+    recorder_option = 0 #"rtsp://192.168.1.103"
     display_option = 1
     mode_option = 2
     time_test = 0

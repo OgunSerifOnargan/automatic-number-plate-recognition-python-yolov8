@@ -12,6 +12,7 @@ class face:
         self.face_finalizer = ["", "", ""]
         self.unknown_count = 0 
         self.isFaceIdentifiedProperly = False
+        self.identification_time = None
     
     def set_encodedVector(self, encodedVector):
         self.encodedVector = encodedVector
@@ -38,7 +39,6 @@ def crop_face_proposals(frame, base_face_locations, trackerId):
 def predict_face(self, img_vulnerable_body):
     if not img_vulnerable_body.shape[1] == 0:
         face_locations = face_recognition.face_locations(img_vulnerable_body, model="hog")
-        print(face_locations)
         return face_locations
     else:
         return None

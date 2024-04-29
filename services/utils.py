@@ -100,10 +100,15 @@ def get_objects_within_time_interval(people, interval_seconds):
     objects_within_interval = []
     for trackerId, person_obj in people.items():
         try:
-            detection_time = datetime.strptime(person_obj['detection_time'], "%Y-%m-%d %H:%M:%S")
+            if person_obj.face['identification_time'] is not None:
+                detection_time = datetime.strptime(person_obj.face['identification_time'], "%Y-%m-%d %H:%M:%S")
+                time_difference = current_time - detection_time
+                if time_difference.total_seconds() <= interval_seconds:
+                    objects_within_interval.append(person_obj)
         except:
-            detection_time = datetime.strptime(person_obj.detection_time, "%Y-%m-%d %H:%M:%S")
-        time_difference = current_time - detection_time
-        if time_difference.total_seconds() <= interval_seconds:
-            objects_within_interval.append(person_obj)
+            if person_obj.face.identification_time is not None:
+                detection_time = datetime.strptime(person_obj.face.identification_time, "%Y-%m-%d %H:%M:%S")
+                time_difference = current_time - detection_time
+                if time_difference.total_seconds() <= interval_seconds:
+                    objects_within_interval.append(person_obj)
     return objects_within_interval
