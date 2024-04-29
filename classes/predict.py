@@ -8,6 +8,8 @@ from services.utils import get_objects_within_time_interval
 from ultralight_face_detector.vision.ssd.mb_tiny_RFB_fd import create_Mb_Tiny_RFB_fd, create_Mb_Tiny_RFB_fd_predictor
 from ultralight_face_detector.vision.ssd.config.fd_config import define_img_size
 from supervision.detection.core import Detections
+from deepface import DeepFace
+
 class predictors:
     def __init__(self):
     #Predictor: Body
@@ -71,6 +73,14 @@ class predictors:
             return face_locations
         else:
             return None
+        
+    def predict_face_deepface_SSD(self, img_person_body):
+        try:
+            if not img_person_body.shape[1] == 0:
+                obj = DeepFace.extract_faces(img_path = img_person_body, detector_backend = "ssd", align=True)
+        except:
+            obj = []
+        return obj
         
     def annotate_people(self, frame):
         self.person_annotated_frame = self.box_annotator.annotate(scene=frame, detections=self.trackingResult, labels=self.trackingResult_labels)
@@ -156,8 +166,8 @@ class predictors:
         face_distances = face_recognition.face_distance(self.known_face_encodings, person.face.faceProposal.encodedVector)
         #get the name of best match
         best_match_index = np.argmin(face_distances)
-        print(face_distances[best_match_index])
-        if matches[best_match_index] and face_distances[best_match_index]<=0.60:
+        #print(face_distances[best_match_index])
+        if matches[best_match_index] and face_distances[best_match_index]<=0.50:
             person.face.faceProposal.name = self.known_face_names[best_match_index]
         return person
     

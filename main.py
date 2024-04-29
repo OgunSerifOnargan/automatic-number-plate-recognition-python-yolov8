@@ -5,6 +5,7 @@ from classes.predict import predictors
 from services.db_utils import append_item_to_json, read_json_as_dict
 from services.utils import initialize_people, rect_to_xyxy, update_people_img_bbox_info, append_string_to_csv
 import cv2
+import time
 
 append_string_to_csv("licenseCode Recognizer has been started...", 'log.csv')
 def main(stop_event, model_name, lines_sv, display_queue, faceRec_queue, post_queue):
@@ -46,7 +47,7 @@ def main(stop_event, model_name, lines_sv, display_queue, faceRec_queue, post_qu
                             people = predictor.separate_detections(people, trackerId)
                             #get updated person
                             person = people[trackerId]
-                            frame = person.modify_solo_detection_for_lineCounter(frame)
+                            frame = person.modify_solo_detection_for_lineCounter(frame, placement="foot")
                             frame = person.update_lineCounter(frame)
                             person.check_where_person_is()
                             predictor.display_results(display_queue, frame, people)
@@ -58,8 +59,13 @@ def main(stop_event, model_name, lines_sv, display_queue, faceRec_queue, post_qu
                                     bbox_face_proposals = predictor.predict_face(person.img)
                                 if model_name == "ultralight":
                                     bbox_face_proposals = predictor.predict_face_ultralight(person.img)
-                                #if len(bbox_face_proposals) == 1: #For DLIB
-                                if len(bbox_face_proposals.size()):    #FOR YOLO and ultralight
+                                if model_name == "deepface_ssd":
+                                    st = time.time()
+                                    bbox_face_proposals = predictor.predict_face_deepface_SSD(person.img)
+                                    et = time.time()
+                                    print(f"deepface_ssd running time is: {et-st}")
+                                if len(bbox_face_proposals) == 1: #For deepface_SSD
+                                # if len(bbox_face_proposals.size()):    #FOR YOLO and ultralight
                                     for bbox_face_proposal in bbox_face_proposals:
                                         #initialize faceProposal at person.face
                                         person.face.faceProposal = faceProposal()
@@ -74,10 +80,19 @@ def main(stop_event, model_name, lines_sv, display_queue, faceRec_queue, post_qu
                                             #calculate and set img
                                             person.face.faceProposal.crop_and_set_img_faceProposal(defaultFrame)
 
-                                        if model_name in ["yolo", "ultralight"]:
-                                            person.face.faceProposal.yolo_bbox = bbox_face_proposal.tolist()
+                                        if model_name in ["yolo", "ultralight", "deepface_ssd"]:
+                                            if model_name == "deepface_ssd":
+                                                bbox_face_proposal['facial_area']
+                                                x1 = bbox_face_proposal['facial_area']['x']
+                                                y1 = bbox_face_proposal['facial_area']['y']
+                                                x2 = x1 + bbox_face_proposal['facial_area']['w']
+                                                y2 = y1 + bbox_face_proposal['facial_area']['h']
+                                                person.face.faceProposal.yolo_bbox = [x1, y1, x2, y2]
+                                            else:
+                                                person.face.faceProposal.yolo_bbox = bbox_face_proposal.tolist()
+
                                             person.face.faceProposal.yolo_to_top_right_bottom_left()
-                                            person.face.faceProposal.set_bbox_defaultFrame_yolo(bbox_person)
+                                            person.face.faceProposal.set_bbox_defaultFrame_yolo(person.bbox)
                                             person.face.faceProposal.crop_and_set_img_faceProposal_yolo(defaultFrame) #içerde .img e ekliyor.
                                         if person.face.faceProposal.img.size>10000:  #!!!IMPORTANT PARAMETER: adjust min & max face size from here!!!
                                             cv2.imshow("face_cropped", person.face.faceProposal.img)

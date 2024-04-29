@@ -24,3 +24,4 @@ class motion_detection():
             else:
                 print("MOTION IS DETECTED")
                 self.motion_detected = True
+                break

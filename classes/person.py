@@ -35,12 +35,12 @@ class person:
 
         if self.lineCounter.in_count - self.current_in_count > 0:
             self.entranceTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"The person  -- {self.name} -- is in now. Entrance Time: {self.entranceTime}") 
+            print(f"The person  -- {self.name} -- is !!!IN!!! now. Entrance Time: {self.entranceTime}") 
             self.current_in_count = self.lineCounter.in_count
 
         if self.lineCounter.out_count - self.current_out_count > 0:
             self.exitTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"The person -- {self.name} -- is in now. Entrance Time: {self.exitTime}") 
+            print(f"The person -- {self.name} -- is !!!OUT!!! now. Entrance Time: {self.exitTime}") 
             self.current_out_count = self.lineCounter.out_count
 
     def update_lineCounter(self, frame):

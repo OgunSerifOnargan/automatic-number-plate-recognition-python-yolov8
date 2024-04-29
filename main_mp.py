@@ -17,16 +17,16 @@ import supervision as sv
 from tools.coords_getter_v3 import get_coords
 
 if __name__ == '__main__':
-    faceRec_queue = multiprocessing.Queue(maxsize=1)
+    faceRec_queue = multiprocessing.Queue(maxsize=20)
     display_queue = multiprocessing.Queue(maxsize=1)
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = 0 #"rtsp://192.168.1.103"
+    recorder_option = "rtsp://192.168.1.105"
     display_option = 1
     mode_option = 2
     time_test = 0
-    model_name = "yolo"
+    model_name = "deepface_ssd"
     append_string_to_csv("person Location Checker has been started...", 'log.csv')
     create_json("db_json")
     reassign_tracker_ids("db_json")
