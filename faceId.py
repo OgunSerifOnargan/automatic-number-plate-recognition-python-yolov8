@@ -3,10 +3,10 @@ from classes.face_proposals import faceProposal
 from classes.predict import face_predictor
 from classes.result_person_info import result_person_info
 from services.db_utils import append_item_to_json
-from services.utils import append_string_to_csv, initialize_people, rect_to_xyxy, update_people_img_bbox_info
+from services.utils import append_string_to_csv, rect_to_xyxy
 import time
 
-def faceId(stop_event, people, faceDet_to_faceId_queue, post_queue, model_name): 
+def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name): 
     face_pred = face_predictor()
     print(face_pred.known_face_names)
     while not stop_event.is_set():
@@ -83,4 +83,14 @@ def faceId(stop_event, people, faceDet_to_faceId_queue, post_queue, model_name):
                                     info = result_person_info(person)
                                     post_queue.put(info)
                                     append_item_to_json(trackerId, person, "db_json")
-                            people[trackerId] = person
+                            faceId_to_faceDet_queue.put([trackerId, person.face.faceProposal.encodedVector, 
+                                                person.face.faceProposal.name, 
+                                                person.face.face_finalizer,         
+                                                person.face.isFaceIdentifiedProperly,
+                                                person.face.identification_time,
+                                                person.name,
+                                                person.face.name,
+                                                person.face.img,
+                                                person.face.encodedVector,
+                                                person.face.faceProposal.bbox_defaultFrame])
+

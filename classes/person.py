@@ -4,6 +4,7 @@ import supervision as sv
 import numpy as np
 import cv2
 import copy
+
 class person:
     def __init__(self, img, bbox, LINE_START, LINE_END):
         self.detection_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

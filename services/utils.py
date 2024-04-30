@@ -10,7 +10,7 @@ def initialize_people(people_dict, trackerId, img_person, bbox_person, lines_cv)
     append_string_to_csv(f"A person is detected. tracker_id: {trackerId}.", 'log.csv')
 #    return people_dict
     
-def update_people_img_bbox_info(person, trackerId, img_person, bbox_person):
+def update_person_img_bbox_info(person, trackerId, img_person, bbox_person):
     person.img = img_person
     person.bbox = bbox_person
     append_string_to_csv(f"person {trackerId}'s image and bbox are updated.", 'log.csv')

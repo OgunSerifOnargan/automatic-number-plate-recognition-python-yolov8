@@ -22,6 +22,7 @@ if __name__ == '__main__':
     people = manager.dict()
     faceRec_queue = multiprocessing.Queue(maxsize=1)
     faceDet_to_faceId_queue = multiprocessing.Queue()
+    faceId_to_faceDet_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue(maxsize=1)
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
@@ -46,9 +47,9 @@ if __name__ == '__main__':
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
                                                         args=(stop_event, faceRec_queue, recorder_option))
     faceDet_process = multiprocessing.Process(target=faceDet,
-                                                args=(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, display_queue, lines_sv))
+                                                args=(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, lines_sv))
     faceId_process = multiprocessing.Process(target=faceId,
-                                                args=(stop_event, people, faceDet_to_faceId_queue, post_queue, model_name))    
+                                                args=(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name))    
     
     display_process = multiprocessing.Process(target= display_frames,
                                                 args=(stop_event, display_queue))
