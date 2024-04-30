@@ -3,7 +3,7 @@ from classes.face_proposals import faceProposal
 from classes.predict import face_predictor
 from classes.result_person_info import result_person_info
 from services.db_utils import append_item_to_json
-from services.utils import append_string_to_csv, rect_to_xyxy
+from services.utils import append_string_to_csv, convert_xywh_to_xyxy, rect_to_xyxy
 import time
 
 def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name): 
@@ -11,21 +11,12 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
     print(face_pred.known_face_names)
     while not stop_event.is_set():
         if not faceDet_to_faceId_queue.empty():
+            st = time.time()
             defaultFrame, trackerId, person = faceDet_to_faceId_queue.get()
             #person = people[trackerId]
             if not person.face.isFaceIdentifiedProperly:
                 #predict face
-                if model_name == "yolo":
-                    bbox_face_proposals = face_pred.predict_face_yolo(person.img)
-                if model_name == "dlib":
-                    bbox_face_proposals = face_pred.predict_face(person.img)
-                if model_name == "ultralight":
-                    bbox_face_proposals = face_pred.predict_face_ultralight(person.img)
-                if model_name == "deepface_ssd":
-                    st = time.time()
-                    bbox_face_proposals = face_pred.predict_face_deepface_SSD(person.img)
-                    et = time.time()
-                    print(f"deepface_ssd running time is: {et-st}")
+                bbox_face_proposals = face_pred.predict_face(model_name, person)
                 if len(bbox_face_proposals) == 1: #For DLIB
                 #if len(bbox_face_proposals.size()):    #FOR YOLO and ultralight
                     for bbox_face_proposal in bbox_face_proposals:
@@ -43,12 +34,7 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                             person.face.faceProposal.crop_and_set_img_faceProposal(defaultFrame)
                         if model_name in ["yolo", "ultralight", "deepface_ssd"]:
                             if model_name == "deepface_ssd":
-                                bbox_face_proposal['facial_area']
-                                x1 = bbox_face_proposal['facial_area']['x']
-                                y1 = bbox_face_proposal['facial_area']['y']
-                                x2 = x1 + bbox_face_proposal['facial_area']['w']
-                                y2 = y1 + bbox_face_proposal['facial_area']['h']
-                                person.face.faceProposal.yolo_bbox = [x1, y1, x2, y2]
+                                person = convert_xywh_to_xyxy(bbox_face_proposal, person)
                             else:
                                 person.face.faceProposal.yolo_bbox = bbox_face_proposal.tolist()
 
@@ -61,7 +47,7 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                             #log write
                             append_string_to_csv(f"Face is detected. tracker_id: {trackerId}", 'log.csv')
                             #convert img to dlib.face_descriptor() format
-                            person = face_pred.identify_face(person)
+                            person = face_pred.identify_face(person, model_name)
                             #Stop point of face prediction 
                             #log write
                             append_string_to_csv(f'Face has been read: \n{trackerId} : {person.face.faceProposal.name} ', 'log.csv')
@@ -83,14 +69,15 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                                     info = result_person_info(person)
                                     post_queue.put(info)
                                     append_item_to_json(trackerId, person, "db_json")
-                            faceId_to_faceDet_queue.put([trackerId, person.face.faceProposal.encodedVector, 
-                                                person.face.faceProposal.name, 
-                                                person.face.face_finalizer,         
-                                                person.face.isFaceIdentifiedProperly,
-                                                person.face.identification_time,
-                                                person.name,
-                                                person.face.name,
-                                                person.face.img,
-                                                person.face.encodedVector,
-                                                person.face.faceProposal.bbox_defaultFrame])
+                            et = time.time()
+                            print(f'faceId: {et-st}')
+                            faceId_to_faceDet_queue.put([trackerId, 
+                                                        person.face.face_finalizer,         
+                                                        person.face.isFaceIdentifiedProperly,
+                                                        person.face.identification_time,
+                                                        person.name,
+                                                        person.face.name,
+                                                        person.face.img,
+                                                        person.face.encodedVector])
+
 

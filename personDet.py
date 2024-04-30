@@ -1,13 +1,10 @@
-from classes.face_proposals import faceProposal
 from classes.motion_detector import motion_detection
-from classes.result_person_info import result_person_info
 from classes.predict import person_predictor
-from services.db_utils import append_item_to_json, read_json_as_dict
-from services.utils import initialize_people, rect_to_xyxy, update_person_img_bbox_info, append_string_to_csv
-import cv2
+from services.utils import initialize_people, update_faceId_results, append_string_to_csv
+import cv2, time
 
 append_string_to_csv("Face Recognizer has been started...", 'log.csv')
-def faceDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, lines_sv):
+def personDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, lines_sv):
     # load predictors and motion_detector
     person_pred = person_predictor()
     motion_detector = motion_detection()
@@ -27,10 +24,9 @@ def faceDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_t
             if not motion_detector.motion_detected and motion_detector.previous_frame is not None:
                 motion_detector.motion_checker(motion_detector.previous_frame, defaultFrame)
             if motion_detector.motion_detected: #and frame_count%10 == 0:
+                st = time.time()
             # body detection and tracking
                 person_pred.predict_person(frame)
-                #display frame
-                #display function
                 #crop body from frame
                 cropped_images_info = person_pred.crop_objects(defaultFrame)
                 #if body cant be found by model, then return to motion detection algorithm
@@ -43,7 +39,7 @@ def faceDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_t
                                 person = people[trackerId]
                             else:
                                 person = people[trackerId]
-                                update_person_img_bbox_info(person, trackerId, img_person, bbox_person)
+                                person.update_person_img_bbox_info(trackerId, img_person, bbox_person)
       
                             person = person_pred.separate_detections(person, trackerId)
                             #get updated person
@@ -54,6 +50,8 @@ def faceDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_t
                             person_pred.display_results(display_queue, frame, people)
                             people[trackerId] = person
                             faceDet_to_faceId_queue.put([defaultFrame, trackerId, person])
+                            et = time.time()
+                            print(f'personDet: {et-st}')
                 else:
                     motion_detector.set_motion_detected(False)
                     print("Camera turn off")
@@ -64,22 +62,3 @@ cv2.destroyAllWindows()
 # write results
 append_string_to_csv("license Code Recognition system has been shut down.", 'log.csv')
 
-
-
-def update_faceId_results(update_elements, people):
-    trackerId, person_face_faceProposal_encodedVector, person_face_faceProposal_name, person_face_face_finalizer, person_face_isFaceIdentifiedProperly, person_face_identification_time, person_name, person_face_name, person_face_img, person_face_encodedVector, person_face_bbox_defaultFrame = update_elements
-    person = people[trackerId]
-    if person_face_identification_time is not None:
-        person.face.identification_time = person_face_identification_time
-    if person_name is not None:
-        person.name = person_name
-    if person_face_name is not None:
-        person.face.name = person_face_name
-    if person_face_img is not None:
-        person.face.img = person_face_img
-    if person_face_encodedVector is not None:
-        person.face.encodedVector = person_face_encodedVector
-    person.face.face_finalizer = person_face_face_finalizer
-    person.face.isFaceIdentifiedProperly = person_face_isFaceIdentifiedProperly
-    
-    people[trackerId] = person

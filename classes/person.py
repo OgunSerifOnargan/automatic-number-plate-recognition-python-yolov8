@@ -78,6 +78,12 @@ class person:
         self.modified_solo_detection_for_lineCounter.xyxy[0][2] = x2_new
         self.modified_solo_detection_for_lineCounter.xyxy[0][3] = y2_new
         return frame
+    
+    def update_person_img_bbox_info(self, trackerId, img_person, bbox_person):
+        self.img = img_person
+        self.bbox = bbox_person
+#        append_string_to_csv(f"person {trackerId}'s image and bbox are updated.", 'log.csv')
+    #    return people_dict
         
 
     

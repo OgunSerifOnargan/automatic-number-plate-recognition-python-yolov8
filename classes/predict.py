@@ -21,7 +21,7 @@ class face_predictor:
         self.name = None
         self.known_face_names, self.known_face_encodings = person_photo_registration("known_faces")
 
-    def predict_face(self, img_person_body):
+    def predict_face_dlib(self, img_person_body):
         if not img_person_body.shape[1] == 0:
             face_locations = face_recognition.face_locations(img_person_body, model="hog")
             return face_locations
@@ -49,18 +49,32 @@ class face_predictor:
             obj = []
         return obj
     
-    def identify_face(self, person):
+    def predict_face(self, model_name, person):
+        if model_name == "yolo":
+            bbox_face_proposals = self.predict_face_yolo(person.img)
+        if model_name == "dlib":
+            bbox_face_proposals = self.predict_face_dlib(person.img)
+        if model_name == "ultralight":
+            bbox_face_proposals = self.predict_face_ultralight(person.img)
+        if model_name == "deepface_ssd":
+            bbox_face_proposals = self.predict_face_deepface_SSD(person.img)
+        return bbox_face_proposals
+    
+    def identify_face(self, person, model_name):
         #encode the face
-        person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), 
-                                                                                          [person.face.faceProposal.dlib_bbox]))
+        if model_name in ["yolo", "ultralight", "deepface_ssd"]:
+            person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), 
+                                                                                            [person.face.faceProposal.dlib_bbox]))
+        if model_name == "dlib":
+            person.face.faceProposal.encodedVector = face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), person.face.faceProposal.bbox_dlib)
         #get binary list of matches according to the constraints
-        matches = face_recognition.compare_faces(self.known_face_encodings, person.face.faceProposal.encodedVector)
+        matches = face_recognition.compare_faces(self.known_face_encodings, np.array(person.face.faceProposal.encodedVector))
         person.face.faceProposal.name = "Unknown"
         #calculate face distances between known_faces and our img
-        face_distances = face_recognition.face_distance(self.known_face_encodings, person.face.faceProposal.encodedVector)
+        face_distances = face_recognition.face_distance(self.known_face_encodings, np.array(person.face.faceProposal.encodedVector))
         #get the name of best match
         best_match_index = np.argmin(face_distances)
-        print(face_distances[best_match_index])
+#        print(face_distances[best_match_index])
         if matches[best_match_index] and face_distances[best_match_index]<=0.60:
             person.face.faceProposal.name = self.known_face_names[best_match_index]
         return person
@@ -137,8 +151,6 @@ class predictors:
     def __init__(self):
         self.face_pred = face_predictor()
         self.person_pred = person_predictor()
-
-
 
 
 def load_lightweight_model():

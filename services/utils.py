@@ -9,12 +9,6 @@ def initialize_people(people_dict, trackerId, img_person, bbox_person, lines_cv)
     people_dict[trackerId] = person(img_person, bbox_person, lines_cv[0][0], lines_cv[0][1])
     append_string_to_csv(f"A person is detected. tracker_id: {trackerId}.", 'log.csv')
 #    return people_dict
-    
-def update_person_img_bbox_info(person, trackerId, img_person, bbox_person):
-    person.img = img_person
-    person.bbox = bbox_person
-    append_string_to_csv(f"person {trackerId}'s image and bbox are updated.", 'log.csv')
-#    return people_dict
         
 def rect_to_xyxy(bbox_face_proposal):
     top, right, bottom, left = bbox_face_proposal[0], bbox_face_proposal[1], bbox_face_proposal[2], bbox_face_proposal[3]
@@ -112,3 +106,29 @@ def get_objects_within_time_interval(people, interval_seconds):
                 if time_difference.total_seconds() <= interval_seconds:
                     objects_within_interval.append(person_obj)
     return objects_within_interval
+
+def update_faceId_results(update_elements, people):
+    trackerId, person_face_face_finalizer, person_face_isFaceIdentifiedProperly, person_face_identification_time, person_name, person_face_name, person_face_img, person_face_encodedVector = update_elements
+    person = people[trackerId]
+    if person_face_identification_time is not None:
+        person.face.identification_time = person_face_identification_time
+    if person_name is not None:
+        person.name = person_name
+    if person_face_name is not None:
+        person.face.name = person_face_name
+    if person_face_img is not None:
+        person.face.img = person_face_img
+    if person_face_encodedVector is not None:
+        person.face.encodedVector = person_face_encodedVector
+    person.face.face_finalizer = person_face_face_finalizer
+    person.face.isFaceIdentifiedProperly = person_face_isFaceIdentifiedProperly
+    people[trackerId] = person
+
+def convert_xywh_to_xyxy(bbox_face_proposal, person):
+    bbox_face_proposal['facial_area']
+    x1 = bbox_face_proposal['facial_area']['x']
+    y1 = bbox_face_proposal['facial_area']['y']
+    x2 = x1 + bbox_face_proposal['facial_area']['w']
+    y2 = y1 + bbox_face_proposal['facial_area']['h']
+    person.face.faceProposal.yolo_bbox = [x1, y1, x2, y2]
+    return person

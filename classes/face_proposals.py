@@ -11,6 +11,7 @@ class faceProposal:
         self.yolo_bbox = None
         self.dlib_bbox = None
         self.bbox_defaultFrame_yolo = None
+        self.dlib_usage_bbox = None
         #ULTRALıghtWeight
 
     def set_bbox_defaultFrame(self, bbox_person):

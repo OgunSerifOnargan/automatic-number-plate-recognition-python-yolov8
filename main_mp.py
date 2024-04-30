@@ -11,7 +11,7 @@ from classes.result_person_info import post_results_MP
 from services.db_utils import create_json, reassign_tracker_ids
 from services.displayServices import display_frames
 from services.frameCollectionServices import collect_frames
-from faceDet import faceDet
+from personDet import personDet
 from services.utils import append_string_to_csv
 import supervision as sv
 from tools.coords_getter_v3 import get_coords
@@ -31,11 +31,10 @@ if __name__ == '__main__':
     display_option = 1
     mode_option = 2
     time_test = 0
-    model_name = "deepface_ssd"
+    model_name = "dlib"
     append_string_to_csv("person Location Checker has been started...", 'log.csv')
     create_json("db_json")
     reassign_tracker_ids("db_json")
-
 
     lines = get_coords(recorder_option, lineCounter=True)
     lines_sv = []
@@ -46,7 +45,7 @@ if __name__ == '__main__':
 
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
                                                         args=(stop_event, faceRec_queue, recorder_option))
-    faceDet_process = multiprocessing.Process(target=faceDet,
+    faceDet_process = multiprocessing.Process(target=personDet,
                                                 args=(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, lines_sv))
     faceId_process = multiprocessing.Process(target=faceId,
                                                 args=(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name))    
