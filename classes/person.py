@@ -21,6 +21,9 @@ class person:
         self.face = face()
         self.name = "Unknown"
 
+    def set_solo_detection(self, detection):
+        self.solo_detection = detection
+        
     def set_findings(self):
         self.face.isFaceIdentifiedProperly = True
         self.face.identification_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -48,7 +51,7 @@ class person:
         frame = self.line_annotator.annotate(frame=frame, line_counter=self.lineCounter)
         return frame
     
-    def modify_solo_detection_for_lineCounter(self, frame, placement="foot"):
+    def modify_solo_detection_for_lineCounter(self, frame, placement="body"):
         x1 = self.solo_detection.xyxy[:,0][0]
         y1 = self.solo_detection.xyxy[:, 1][0]
         x2 = self.solo_detection.xyxy[:, 2][0]

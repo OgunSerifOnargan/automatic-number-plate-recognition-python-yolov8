@@ -8,13 +8,13 @@ import os
 def initialize_people(people_dict, trackerId, img_person, bbox_person, lines_cv):
     people_dict[trackerId] = person(img_person, bbox_person, lines_cv[0][0], lines_cv[0][1])
     append_string_to_csv(f"A person is detected. tracker_id: {trackerId}.", 'log.csv')
-    return people_dict
+#    return people_dict
     
-def update_people_img_bbox_info(people_dict, trackerId, img_person, bbox_person):
-    people_dict[trackerId].img = img_person
-    people_dict[trackerId].bbox = bbox_person
+def update_people_img_bbox_info(person, trackerId, img_person, bbox_person):
+    person.img = img_person
+    person.bbox = bbox_person
     append_string_to_csv(f"person {trackerId}'s image and bbox are updated.", 'log.csv')
-    return people_dict
+#    return people_dict
         
 def rect_to_xyxy(bbox_face_proposal):
     top, right, bottom, left = bbox_face_proposal[0], bbox_face_proposal[1], bbox_face_proposal[2], bbox_face_proposal[3]
