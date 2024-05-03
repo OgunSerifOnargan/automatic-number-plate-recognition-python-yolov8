@@ -132,6 +132,8 @@ def get_coords(recorder_option, lineCounter=False, circle_drawer=False, obstacle
                             #DONE
                             elif i == 1:
                                 success = False
+                                break
+
 
                     if 0 <= mouse_x < window_width - menu_width and 0 <= mouse_y < window_height:
                         if first_point is None:

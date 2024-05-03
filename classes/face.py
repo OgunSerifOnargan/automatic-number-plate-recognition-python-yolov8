@@ -9,7 +9,7 @@ class face:
         self.encodedVector = None
         self.name = None
         
-        self.face_finalizer = ["", "", ""]
+        self.face_finalizer = ["", ""]
         self.unknown_count = 0 
         self.isFaceIdentifiedProperly = False
         self.identification_time = None

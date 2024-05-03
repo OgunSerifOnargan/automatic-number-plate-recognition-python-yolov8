@@ -6,17 +6,22 @@ import cv2
 import copy
 
 class person:
-    def __init__(self, img, bbox, LINE_START, LINE_END):
+    def __init__(self, trackerId, img, bbox, lines_sv):
+        self.trackerId = trackerId
         self.detection_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.img = img
         self.bbox = bbox
-        self.lineCounter = sv.LineZone(start=LINE_START, end=LINE_END)
+        self.lineCounter = sv.LineZone(start=lines_sv[0][0], end=lines_sv[0][1])
         self.line_annotator = sv.LineZoneAnnotator(thickness=4, text_thickness=4, text_scale=2)
         self.solo_detection = None
         self.modified_trackingResults_for_lineCounter = None
         self.current_in_count = 0
         self.current_out_count = 0
+        self.location_state = 0
 
+        #person height calculator
+        # self.heightLine0 = sv.LineZone(start=line_sv[1][0], end=line_sv[1][1])
+        # self.heightLine1 = sv.LineZone(start=line_sv[2][0], end=line_sv[2][1])
         self.entranceTime = None
         self.exitTime = None
         self.face = face()
@@ -41,11 +46,13 @@ class person:
             self.entranceTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"The person  -- {self.name} -- is !!!IN!!! now. Entrance Time: {self.entranceTime}") 
             self.current_in_count = self.lineCounter.in_count
+            self.location_state = 0
 
         if self.lineCounter.out_count - self.current_out_count > 0:
             self.exitTime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             print(f"The person -- {self.name} -- is !!!OUT!!! now. Entrance Time: {self.exitTime}") 
             self.current_out_count = self.lineCounter.out_count
+            self.location_state = 1
 
     def update_lineCounter(self, frame):
         self.lineCounter.trigger(self.modified_solo_detection_for_lineCounter)
@@ -85,6 +92,9 @@ class person:
 #        append_string_to_csv(f"person {trackerId}'s image and bbox are updated.", 'log.csv')
     #    return people_dict
         
+    # def check_height_calculator_activated(self):
+    #     if self.heightLine0.in_count != self.heightLine1.in_count or self.heightLine0.out_count != self.heightLine1.out_count:
+    #         height = (self.bbox[3] - self.bbox[1]) * Mperpix
 
     
 

@@ -8,16 +8,17 @@ import time
 
 def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name): 
     face_pred = face_predictor()
+    recognized_trackerIds = []
     print(face_pred.known_face_names)
     while not stop_event.is_set():
         if not faceDet_to_faceId_queue.empty():
-            st = time.time()
             defaultFrame, trackerId, person = faceDet_to_faceId_queue.get()
             #person = people[trackerId]
-            if not person.face.isFaceIdentifiedProperly:
+            if not person.face.isFaceIdentifiedProperly and trackerId not in recognized_trackerIds:
+                st = time.time()
                 #predict face
                 bbox_face_proposals = face_pred.predict_face(model_name, person)
-                if len(bbox_face_proposals) == 1: #For DLIB
+                if len(bbox_face_proposals) == 1: #For DLIB and deepface_ssd
                 #if len(bbox_face_proposals.size()):    #FOR YOLO and ultralight
                     for bbox_face_proposal in bbox_face_proposals:
                         #initialize faceProposal at person.face
@@ -41,36 +42,38 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                             person.face.faceProposal.yolo_to_top_right_bottom_left()
                             person.face.faceProposal.set_bbox_defaultFrame_yolo(person.bbox)
                             person.face.faceProposal.crop_and_set_img_faceProposal_yolo(defaultFrame) #içerde .img e ekliyor.
-                        if person.face.faceProposal.img.size>10000:  #!!!IMPORTANT PARAMETER: adjust min & max face size from here!!!
+                        if person.face.faceProposal.img.size>5000:  #!!!IMPORTANT PARAMETER: adjust min & max face size from here!!!
                             cv2.imshow("face_cropped", person.face.faceProposal.img)
                             cv2.waitKey(1)
                             #log write
                             append_string_to_csv(f"Face is detected. tracker_id: {trackerId}", 'log.csv')
                             #convert img to dlib.face_descriptor() format
-                            person = face_pred.identify_face(person, model_name)
+                            person = face_pred.identify_face(person, model_name, 0.60)
                             #Stop point of face prediction 
                             #log write
                             append_string_to_csv(f'Face has been read: \n{trackerId} : {person.face.faceProposal.name} ', 'log.csv')
                             #search 3 consecutive name return
                             person.face.face_finalizer.pop(0)
                             person.face.face_finalizer.append(person.face.faceProposal.name)
-                            if person.face.face_finalizer[0] == person.face.face_finalizer[1] == person.face.face_finalizer[2] != "Unknown":
+                            if person.face.face_finalizer[0] == person.face.face_finalizer[1] != "Unknown":
                                 #log write and print new written name
                                 print(f'{person.face.faceProposal.name}    NEW FACE IS FOUND!!!')
+                                recognized_trackerIds.append(trackerId)
                                 #set final variables into objects' attributes
                                 person.set_findings()
-                            elif person.face.face_finalizer[0] == person.face.face_finalizer[1] == person.face.face_finalizer[2] == "Unknown":
-                                person.face.face_finalizer = ["", "", ""]
+                                info = result_person_info(person)
+                                post_queue.put(info)
+                            elif person.face.face_finalizer[0] == person.face.face_finalizer[1] == "Unknown":
+                                person.face.face_finalizer = ["", ""]
                                 person.face.unknown_count+=1
-                                if person.face.unknown_count >= 10:
+                                if person.face.unknown_count >= 5:
                                     print(f'{person.face.faceProposal.name}    NEW FACE IS FOUND!!!')
+                                    recognized_trackerIds.append(trackerId)
                                     #set final variables into objects' attributes
                                     person.set_findings()
                                     info = result_person_info(person)
                                     post_queue.put(info)
                                     append_item_to_json(trackerId, person, "db_json")
-                            et = time.time()
-                            print(f'faceId: {et-st}')
                             faceId_to_faceDet_queue.put([trackerId, 
                                                         person.face.face_finalizer,         
                                                         person.face.isFaceIdentifiedProperly,
@@ -79,5 +82,7 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                                                         person.face.name,
                                                         person.face.img,
                                                         person.face.encodedVector])
+                et = time.time()
+                print(f'faceId: {et-st}')
 
 

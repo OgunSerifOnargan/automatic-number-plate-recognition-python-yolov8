@@ -1,18 +1,18 @@
 import imutils
 import cv2
-
+import time
 class motion_detection():
     def __init__(self):
         self.min_area = 100
         self.motion_detected = True
         self.previous_frame = None
         self.current_frame = None
-
+        self.last_motion_detection_time = time.time()
     def set_motion_detected(self, state):
         self.motion_detected = state
 		
-    def motion_checker(self, firstFrame, secondFrame):
-        diff = cv2.absdiff(firstFrame, secondFrame)
+    def motion_checker(self, previousFrame, currentFrame):
+        diff = cv2.absdiff(previousFrame, currentFrame)
         diff_gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(diff_gray, (21, 21), 0)
         _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
@@ -24,4 +24,5 @@ class motion_detection():
             else:
                 print("MOTION IS DETECTED")
                 self.motion_detected = True
+                self.last_motion_detection_time = time.time()
                 break

@@ -16,27 +16,29 @@ from services.utils import append_string_to_csv
 import supervision as sv
 from tools.coords_getter_v3 import get_coords
 from faceId import faceId
+import cv2
 
 if __name__ == '__main__':
     manager = multiprocessing.Manager()
     people = manager.dict()
-    faceRec_queue = multiprocessing.Queue(maxsize=1)
+    faceRec_queue = multiprocessing.Queue(maxsize=100)
     faceDet_to_faceId_queue = multiprocessing.Queue()
     faceId_to_faceDet_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue(maxsize=1)
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = 0 #"rtsp://192.168.1.105"
+    recorder_option = "rtsp://admin:endurans2024.@192.168.0.161:554/Streaming/channels/1"
     display_option = 1
     mode_option = 2
     time_test = 0
-    model_name = "dlib"
+    model_name = "deepface_ssd"
     append_string_to_csv("person Location Checker has been started...", 'log.csv')
     create_json("db_json")
     reassign_tracker_ids("db_json")
 
     lines = get_coords(recorder_option, lineCounter=True)
+    cv2.destroyAllWindows()
     lines_sv = []
     for i, line in enumerate(lines):
         LINE_START = sv.Point(line[0][0], line[0][1])

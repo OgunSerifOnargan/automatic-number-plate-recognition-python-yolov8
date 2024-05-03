@@ -60,7 +60,7 @@ class face_predictor:
             bbox_face_proposals = self.predict_face_deepface_SSD(person.img)
         return bbox_face_proposals
     
-    def identify_face(self, person, model_name):
+    def identify_face(self, person, model_name, threshold):
         #encode the face
         if model_name in ["yolo", "ultralight", "deepface_ssd"]:
             person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), 
@@ -74,9 +74,10 @@ class face_predictor:
         face_distances = face_recognition.face_distance(self.known_face_encodings, np.array(person.face.faceProposal.encodedVector))
         #get the name of best match
         best_match_index = np.argmin(face_distances)
-#        print(face_distances[best_match_index])
-        if matches[best_match_index] and face_distances[best_match_index]<=0.60:
+        print(face_distances[best_match_index])
+        if matches[best_match_index] and face_distances[best_match_index]<=threshold:
             person.face.faceProposal.name = self.known_face_names[best_match_index]
+            print(person.face.faceProposal.name)
         return person
     
 class person_predictor:

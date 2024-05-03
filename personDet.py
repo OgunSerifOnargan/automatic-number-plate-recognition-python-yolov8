@@ -31,6 +31,7 @@ def personDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId
                 cropped_images_info = person_pred.crop_objects(defaultFrame)
                 #if body cant be found by model, then return to motion detection algorithm
                 if len(cropped_images_info) != 0:
+                    motion_detector.last_motion_detection_time = time.time()
                     for trackerId, [img_person, bbox_person] in cropped_images_info.items():
                         if img_person.size>0:
                             #update new frame's incomings
@@ -50,9 +51,10 @@ def personDet(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId
                             person_pred.display_results(display_queue, frame, people)
                             people[trackerId] = person
                             faceDet_to_faceId_queue.put([defaultFrame, trackerId, person])
+
                             et = time.time()
                             print(f'personDet: {et-st}')
-                else:
+                elif len(cropped_images_info) == 0 and (time.time() - motion_detector.last_motion_detection_time > 5):
                     motion_detector.set_motion_detected(False)
                     print("Camera turn off")
             while not faceId_to_faceDet_queue.empty():
