@@ -12,7 +12,10 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
     print(face_pred.known_face_names)
     while not stop_event.is_set():
         if not faceDet_to_faceId_queue.empty():
-            defaultFrame, trackerId, person, refresh_needed = faceDet_to_faceId_queue.get()
+            defaultFrame, trackerId, person, refresh_needed, recognized_trackerIds_from_unidentified = faceDet_to_faceId_queue.get()
+            if recognized_trackerIds_from_unidentified:
+                for recognized_trackerId in recognized_trackerIds_from_unidentified:
+                    recognized_trackerIds.append(recognized_trackerId)
             if refresh_needed:
                 face_pred.known_face_indexes, face_pred.known_face_names, face_pred.known_face_encodings = read_known_faces_from_csv_file("known_faces.csv")
             #person = people[trackerId]

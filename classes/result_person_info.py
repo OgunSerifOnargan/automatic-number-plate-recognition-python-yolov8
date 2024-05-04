@@ -155,7 +155,6 @@ def generate_uid():
     uid = str(uuid.uuid4())
     return uid
 
-
 def post_results_MP(stop_event, post_queue):
     while not stop_event.is_set():
         if not post_queue.empty():
@@ -164,8 +163,6 @@ def post_results_MP(stop_event, post_queue):
             info.construct_body_img()
             info.send_post_request('PostCRFormAnswersPublic')
             info.send_post_request('PostCRFormAnswersPublicFileUpload')
-
-
 
 def display_frames(stop_event, display_queue):
     while not stop_event.is_set():

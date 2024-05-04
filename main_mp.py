@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
                                                         args=(stop_event, faceRec_queue, recorder_option))
-    faceDet_process = multiprocessing.Process(target=personDet,
+    personDet_process = multiprocessing.Process(target=personDet,
                                                 args=(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, post_queue, lines_sv, CAM_ID))
     faceId_process = multiprocessing.Process(target=faceId,
                                                 args=(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name, CAM_ID))    
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     post_process = multiprocessing.Process(target=post_results_MP,
                                            args=(stop_event, post_queue))
     frame_collector_process.start()
-    faceDet_process.start()
+    personDet_process.start()
     faceId_process.start()
     post_process.start()
     if display_option == 1:
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         stop_event.set()
         frame_collector_process.join()
-        faceDet_process.join()
+        personDet_process.join()
         faceId_process.join()
         post_process.join()
         if display_option == 1: 

@@ -18,6 +18,7 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
 
     while not stop_event.is_set():
         if not faceRec_queue.empty():
+            recognized_trackerIds_from_unidentified = []
             motion_detector.previous_frame = frame
             frame = faceRec_queue.get()
             frame_count +=1
@@ -39,6 +40,15 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
                             person.face.unknown_count += 1
                         if person.face.unknown_count >= 10:
                             if person.name is None and person.face.img is not None and person.face.isFaceIdentifiedProperly == False:
+                                if person.face.face_finalizer[0] == "" and person.face.face_finalizer[1] != "":
+                                    person.face.face_finalizer[0] = person.face.face_finalizer[1]
+                                    #log write and print new written name
+                                    print(f'{person.face.faceProposal.name}    NEW FACE IS FOUND!!!')
+                                    recognized_trackerIds_from_unidentified.append(trackerId)
+                                    #set final variables into objects' attributes
+                                    person.set_findings()
+                                    info = result_person_info(person, camId)
+                                    post_queue.put(info)
                                 print(f'Unidentified label is attained to {trackerId}')
                                 id = register_new_unidentified_face(person)
                                 refresh_needed = True
@@ -67,7 +77,7 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
                             person_pred.assign_final_name_for_display(people)
                             person_pred.display_results(display_queue, frame, people)
                             people[trackerId] = person
-                            faceDet_to_faceId_queue.put([defaultFrame, trackerId, person, refresh_needed])
+                            faceDet_to_faceId_queue.put([defaultFrame, trackerId, person, refresh_needed, recognized_trackerIds_from_unidentified])
 
                             et = time.time()
                             #print(f'personDet: {et-st}')

@@ -86,7 +86,7 @@ class face_predictor:
         return person
 
 def register_new_unidentified_face(person):
-    face_encoding = person.face.encodedVector
+    face_encoding = person.face.encodedVector[0]
     # Read the CSV file into a DataFrame
     df = pd.read_csv('known_faces.csv')
     # Getting the next index value
