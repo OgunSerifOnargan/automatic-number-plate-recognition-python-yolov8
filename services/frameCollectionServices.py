@@ -6,7 +6,7 @@ def collect_frames(stop_event, face_rec_queue, recorder_option):
         ret, frame = cap.read()
         if not ret:
             break
-#        if not face_rec_queue.full():
-        face_rec_queue.put(frame, block=True, timeout=200)
+        if not face_rec_queue.full():
+            face_rec_queue.put(frame, block=True, timeout=200)
 
     cap.release()

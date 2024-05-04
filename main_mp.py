@@ -20,15 +20,15 @@ import cv2
 
 if __name__ == '__main__':
     manager = multiprocessing.Manager()
-    people = manager.dict()
-    faceRec_queue = multiprocessing.Queue(maxsize=100)
+    faceRec_queue = multiprocessing.Queue(maxsize=1)
     faceDet_to_faceId_queue = multiprocessing.Queue()
     faceId_to_faceDet_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue(maxsize=1)
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = "rtsp://admin:endurans2024.@192.168.0.161:554/Streaming/channels/1"
+    recorder_option = 0 #"rtsp://admin:endurans2024.@192.168.0.161:554/Streaming/channels/1"
+    CAM_ID = 1
     display_option = 1
     mode_option = 2
     time_test = 0
@@ -48,9 +48,9 @@ if __name__ == '__main__':
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
                                                         args=(stop_event, faceRec_queue, recorder_option))
     faceDet_process = multiprocessing.Process(target=personDet,
-                                                args=(stop_event, people, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, lines_sv))
+                                                args=(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, post_queue, lines_sv, CAM_ID))
     faceId_process = multiprocessing.Process(target=faceId,
-                                                args=(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name))    
+                                                args=(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name, CAM_ID))    
     
     display_process = multiprocessing.Process(target= display_frames,
                                                 args=(stop_event, display_queue))

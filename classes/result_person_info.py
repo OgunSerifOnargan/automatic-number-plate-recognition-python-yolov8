@@ -6,22 +6,18 @@ from services.utils import generate_uid
 API_URL = base_url
 class result_person_info:
 
-    def __init__(self, person_obj):
+    def __init__(self, person_obj, camId):
+        self.camId = camId
         self.face_img = person_obj.face.img
         self.face_img_base64 = _set_img_base64(person_obj.face.img)
-        self.face_bbox = person_obj.face.bbox_defaultFrame
-        self.encodedVector = person_obj.face.encodedVector
-        self.faceName = person_obj.name
         self.name = person_obj.name
         self.trackerId = person_obj.trackerId
         self.location_state = person_obj.location_state
 
         self.body_img = person_obj.img
         self.body_img_base64 = _set_img_base64(person_obj.img)
-        self.body_info = None
         self.uid_for_img_face = generate_uid()
         self.uid_for_img_body = generate_uid()
-        self.img_base64 = None
 
     def construct_body_info(self):
         print('3862:name, 3863:empty, 3866:trackerId, 3867:empty, 3868:location_state, 3863:img_face, 3867:img_body')
@@ -66,7 +62,16 @@ class result_person_info:
                     "ROWDATARAW": self.location_state, #//in - out değeri, 0 out olsun 1 in olsun..
                     "ROWDATARAW2": "",
                     "rowState": 0
+                    },
+                    {
+                    "ID": -1,
+                    "CRF_FIELDS_ID": 3874,
+                    "CRF_FORMS_ID": 414,
+                    "ROWDATARAW": self.camId, #//cam ID
+                    "ROWDATARAW2": "",
+                    "rowState": 0
                     }
+
                 ],
                 "PUBLICTOKEN": "B4C58CBC-5385-4E61-B5C2-46CE5AB1A686"
                 }

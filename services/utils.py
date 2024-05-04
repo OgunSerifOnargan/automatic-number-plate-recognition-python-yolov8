@@ -4,6 +4,7 @@ from classes.person import person
 import csv
 from datetime import datetime
 import os
+from datetime import datetime, timedelta
 
 def initialize_people(people_dict, trackerId, img_person, bbox_person, lines_cv):
     people_dict[trackerId] = person(trackerId, img_person, bbox_person, lines_cv)
@@ -132,3 +133,24 @@ def convert_xywh_to_xyxy(bbox_face_proposal, person):
     y2 = y1 + bbox_face_proposal['facial_area']['h']
     person.face.faceProposal.yolo_bbox = [x1, y1, x2, y2]
     return person
+
+def people_cleaner_accordingtoTime(people, threshold_time):
+    # Calculate the datetime threshold for the last 5 minutes
+    threshold_time = datetime.now() - timedelta(minutes=threshold_time)
+
+    # List to store keys of objects to remove
+    keys_to_remove = []
+
+    # Iterate over the original dictionary
+    for trackerId, person_obj in people.items():
+        # Convert detection time string to datetime object
+        detection_time = datetime.strptime(person_obj.detection_time, '%Y-%m-%d %H:%M:%S')
+        
+        # Check if the detection time is older than the threshold
+        if detection_time < threshold_time:
+            # Add the key to the list of keys to remove
+            keys_to_remove.append(trackerId)
+
+    # Remove objects from the dictionary based on keys in keys_to_remove
+    for trackerId in keys_to_remove:
+        del people[trackerId]

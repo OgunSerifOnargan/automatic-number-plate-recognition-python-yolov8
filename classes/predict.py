@@ -9,6 +9,8 @@ from ultralight_face_detector.vision.ssd.mb_tiny_RFB_fd import create_Mb_Tiny_RF
 from ultralight_face_detector.vision.ssd.config.fd_config import define_img_size
 from supervision.detection.core import Detections
 from deepface import DeepFace
+import csv
+import pandas as pd
 class face_predictor:
     def __init__(self):
         #YOLO
@@ -16,10 +18,11 @@ class face_predictor:
         self.yoloResult = None
         #Ultralight
         self.lightweight_predictor = load_lightweight_model()
+        self.refresh_needed = False
 
         #Predictor: Face
         self.name = None
-        self.known_face_names, self.known_face_encodings = person_photo_registration("known_faces")
+        self.known_face_indexes, self.known_face_names, self.known_face_encodings = read_known_faces_from_csv_file("known_faces.csv")
 
     def predict_face_dlib(self, img_person_body):
         if not img_person_body.shape[1] == 0:
@@ -65,21 +68,37 @@ class face_predictor:
         if model_name in ["yolo", "ultralight", "deepface_ssd"]:
             person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), 
                                                                                             [person.face.faceProposal.dlib_bbox]))
+            person.face.encodedVector = person.face.faceProposal.encodedVector
         if model_name == "dlib":
-            person.face.faceProposal.encodedVector = face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), person.face.faceProposal.bbox_dlib)
+            person.face.faceProposal.encodedVector = face_recognition.face_encodings(np.ascontiguousarray(person.face.img[:, :, ::-1]))
         #get binary list of matches according to the constraints
-        matches = face_recognition.compare_faces(self.known_face_encodings, np.array(person.face.faceProposal.encodedVector))
-        person.face.faceProposal.name = "Unknown"
+        matches = face_recognition.compare_faces(np.array(self.known_face_encodings), np.array(person.face.faceProposal.encodedVector).reshape(1, -1))
+        person.face.faceProposal.name = ""
         #calculate face distances between known_faces and our img
-        face_distances = face_recognition.face_distance(self.known_face_encodings, np.array(person.face.faceProposal.encodedVector))
+        face_distances = face_recognition.face_distance(np.array(self.known_face_encodings), np.array(person.face.faceProposal.encodedVector))
         #get the name of best match
         best_match_index = np.argmin(face_distances)
         print(face_distances[best_match_index])
         if matches[best_match_index] and face_distances[best_match_index]<=threshold:
-            person.face.faceProposal.name = self.known_face_names[best_match_index]
+            #person.face.faceProposal.name = self.known_face_names[best_match_index]
+            person.face.faceProposal.name = self.known_face_indexes[best_match_index]
             print(person.face.faceProposal.name)
         return person
-    
+
+def register_new_unidentified_face(person):
+    face_encoding = person.face.encodedVector
+    # Read the CSV file into a DataFrame
+    df = pd.read_csv('known_faces.csv')
+    # Getting the next index value
+    next_index = df.index[-1] + 2
+    # Creating a new row with the next index value appended to 'Encoding' and 'Name' as null
+    new_row = pd.DataFrame({'Index': [next_index], 'Name': [None], 'Encoding': str(face_encoding)})
+    # Appending the new row to the DataFrame
+    df = pd.concat([df, new_row], ignore_index=True)
+    # Save the DataFrame back to CSV
+    df.to_csv('known_faces.csv', index=False)
+    return next_index
+
 class person_predictor:
     def __init__(self):
         #Person Detector
@@ -148,6 +167,7 @@ class person_predictor:
                 )
                 person.set_solo_detection(solo_detection)
         return person
+
 class predictors:
     def __init__(self):
         self.face_pred = face_predictor()
@@ -194,3 +214,18 @@ def _display_rows_on_frame(people_in_interval, frame):
             text = f"{person.detection_time}: {person.name}"
             frame = cv2.putText(frame, text, (15, y_offset + i * 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
     return frame
+
+def read_known_faces_from_csv_file(file_path):
+    known_face_indexes = []
+    known_face_names = []
+    known_face_encodings = []
+
+    with open(file_path, 'r') as csvfile:
+        csv_reader = csv.DictReader(csvfile)
+
+        for row in csv_reader:
+            known_face_indexes.append(int(row['Index']))
+            known_face_names.append(row['Name'])
+            known_face_encodings.append([float(val) for val in row['Encoding'][1:-1].split()])
+
+    return known_face_indexes, known_face_names, known_face_encodings

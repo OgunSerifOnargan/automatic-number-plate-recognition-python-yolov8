@@ -8,7 +8,7 @@ class face:
         self.bbox_coords = None
         self.encodedVector = None
         self.name = None
-        
+        self.bbox_dlib = None
         self.face_finalizer = ["", ""]
         self.unknown_count = 0 
         self.isFaceIdentifiedProperly = False

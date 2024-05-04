@@ -25,7 +25,7 @@ class person:
         self.entranceTime = None
         self.exitTime = None
         self.face = face()
-        self.name = "Unknown"
+        self.name = None
 
     def set_solo_detection(self, detection):
         self.solo_detection = detection
@@ -38,6 +38,17 @@ class person:
         self.face.img = self.face.faceProposal.img
         self.face.encodedVector = self.face.faceProposal.encodedVector
         self.face.bbox_defaultFrame = self.face.faceProposal.bbox_defaultFrame
+
+    def set_unidentified_findings(self, id):
+        if self.face.img is not None:
+            self.face.isFaceIdentifiedProperly = True
+            self.face.identification_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.name = id
+            self.face.name = id
+            self.face.img = self.face.img
+        if self.face.faceProposal is not None:
+            if self.face.faceProposal.encodedVector is not None: 
+                self.face.encodedVector = self.face.faceProposal.encodedVector
 
     def check_where_person_is(self):
         self.placementState = self.lineCounter.in_count - self.lineCounter.out_count
