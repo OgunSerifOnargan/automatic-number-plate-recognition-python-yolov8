@@ -42,6 +42,7 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
                             if person.name is None and person.face.img is not None and person.face.isFaceIdentifiedProperly == False:
                                 if person.face.face_finalizer[0] == "" and person.face.face_finalizer[1] != "":
                                     person.face.face_finalizer[0] = person.face.face_finalizer[1]
+                                    person.face.faceProposal.name = person.face.face_finalizer[1]
                                     #log write and print new written name
                                     print(f'{person.face.faceProposal.name}    NEW FACE IS FOUND!!!')
                                     recognized_trackerIds_from_unidentified.append(trackerId)
