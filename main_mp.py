@@ -20,14 +20,14 @@ import cv2
 
 if __name__ == '__main__':
     manager = multiprocessing.Manager()
-    faceRec_queue = multiprocessing.Queue(maxsize=1)
+    faceRec_queue = multiprocessing.Queue(maxsize=50)
     faceDet_to_faceId_queue = multiprocessing.Queue()
     faceId_to_faceDet_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue(maxsize=1)
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = 0 #"rtsp://admin:endurans2024.@192.168.0.161:554/Streaming/channels/1"
+    recorder_option = "rtsp://admin:endurans2024.@192.168.0.161:554/Streaming/channels/1"
     CAM_ID = 1
     display_option = 1
     mode_option = 2

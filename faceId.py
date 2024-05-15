@@ -13,12 +13,14 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
     while not stop_event.is_set():
         if not faceDet_to_faceId_queue.empty():
             defaultFrame, trackerId, person, refresh_needed, recognized_trackerIds_from_unidentified = faceDet_to_faceId_queue.get()
+
+            #if a name is assigned on personDet, then do not check the person's face. Update known faces
             if recognized_trackerIds_from_unidentified:
                 for recognized_trackerId in recognized_trackerIds_from_unidentified:
                     recognized_trackerIds.append(recognized_trackerId)
             if refresh_needed:
                 face_pred.known_face_indexes, face_pred.known_face_names, face_pred.known_face_encodings = read_known_faces_from_csv_file("known_faces.csv")
-            #person = people[trackerId]
+
             if not person.face.isFaceIdentifiedProperly and trackerId not in recognized_trackerIds:
                 st = time.time()
                 #predict face
@@ -29,6 +31,8 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                         #initialize faceProposal at person.face
                         person.face.faceProposal = faceProposal()
                         #calculate and set bbox for face, defaultFrame and dlib  (dlib format is top, right, bottom, left. It's unusual format.)
+                        
+
                         if model_name == "dlib":
                             #body_xyxy
                             person.face.faceProposal.bbox = rect_to_xyxy(bbox_face_proposal)
@@ -49,7 +53,10 @@ def faceId(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_qu
                             person.face.faceProposal.set_bbox_defaultFrame_yolo(person.bbox)
                             person.face.faceProposal.crop_and_set_img_faceProposal_yolo(defaultFrame) #içerde .img e ekliyor.
                             person.face.img = person.face.faceProposal.img
-                        if person.face.faceProposal.img.size>5000:  #!!!IMPORTANT PARAMETER: adjust min & max face size from here!!!
+
+
+
+                        if person.face.faceProposal.img.size>1000:  #!!!IMPORTANT PARAMETER: adjust min & max face size from here!!!
                             cv2.imshow("face_cropped", person.face.faceProposal.img)
                             cv2.waitKey(1)
                             #log write

@@ -97,6 +97,7 @@ def register_new_unidentified_face(person):
     df = pd.concat([df, new_row], ignore_index=True)
     # Save the DataFrame back to CSV
     df.to_csv('known_faces.csv', index=False)
+    print(f'Unidentified label is attained to {next_index}')
     return next_index
 
 class person_predictor:

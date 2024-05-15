@@ -35,6 +35,7 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
                 person_pred.predict_person(frame)
                 #crop body from frame
                 cropped_images_info = person_pred.crop_objects(defaultFrame)
+                #algorithm for unidentified people to retain their identity / set id number for totaly unidentified people
                 for trackerId, person in people.items():
                         if trackerId not in cropped_images_info.keys():
                             person.face.unknown_count += 1
@@ -42,15 +43,14 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
                             if person.name is None and person.face.img is not None and person.face.isFaceIdentifiedProperly == False:
                                 if person.face.face_finalizer[0] == "" and person.face.face_finalizer[1] != "":
                                     person.face.face_finalizer[0] = person.face.face_finalizer[1]
-                                    person.face.faceProposal.name = person.face.face_finalizer[1]
+                                    person.face.name = person.face.face_finalizer[1]
                                     #log write and print new written name
-                                    print(f'{person.face.faceProposal.name}    NEW FACE IS FOUND!!!')
+                                    print(f'{person.face.name}    NEW FACE IS FOUND!!!')
                                     recognized_trackerIds_from_unidentified.append(trackerId)
                                     #set final variables into objects' attributes
                                     person.set_findings()
                                     info = result_person_info(person, camId)
                                     post_queue.put(info)
-                                print(f'Unidentified label is attained to {trackerId}')
                                 id = register_new_unidentified_face(person)
                                 refresh_needed = True
                                 person.set_unidentified_findings(id)
@@ -69,7 +69,8 @@ def personDet(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_face
                             else:
                                 person = people[trackerId]
                                 person.update_person_img_bbox_info(trackerId, img_person, bbox_person)
-      
+                            cv2.imshow("body_cropped", person.img)
+                            cv2.waitKey(1)
                             person = person_pred.separate_detections(person, trackerId)
                             #get updated person
                             frame = person.modify_solo_detection_for_lineCounter(frame)

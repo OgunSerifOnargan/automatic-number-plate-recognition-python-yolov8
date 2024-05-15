@@ -126,12 +126,11 @@ def update_faceId_results(update_elements, people):
     people[trackerId] = person
 
 def convert_xywh_to_xyxy(bbox_face_proposal, person):
-    bbox_face_proposal['facial_area']
     x1 = bbox_face_proposal['facial_area']['x']
     y1 = bbox_face_proposal['facial_area']['y']
     x2 = x1 + bbox_face_proposal['facial_area']['w']
     y2 = y1 + bbox_face_proposal['facial_area']['h']
-    person.face.faceProposal.yolo_bbox = [x1, y1, x2, y2]
+    person.face.faceProposal.bbox_xyxy = [x1, y1, x2, y2]
     return person
 
 def people_cleaner_accordingtoTime(people, threshold_time):

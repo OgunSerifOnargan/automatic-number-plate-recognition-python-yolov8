@@ -35,10 +35,3 @@ def crop_face_proposals(frame, base_face_locations, trackerId):
                 img_faces_proposal[trackerId] = [[bboxes, img_face]]
 
     return img_faces_proposal
-
-def predict_face(self, img_vulnerable_body):
-    if not img_vulnerable_body.shape[1] == 0:
-        face_locations = face_recognition.face_locations(img_vulnerable_body, model="hog")
-        return face_locations
-    else:
-        return None

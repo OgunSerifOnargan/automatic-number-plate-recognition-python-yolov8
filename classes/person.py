@@ -33,9 +33,7 @@ class person:
     def set_findings(self):
         self.face.isFaceIdentifiedProperly = True
         self.face.identification_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.name = self.face.faceProposal.name
-        self.face.name = self.face.faceProposal.name
-        self.face.img = self.face.faceProposal.img
+        self.name = self.face.name
         self.face.encodedVector = self.face.faceProposal.encodedVector
         self.face.bbox_defaultFrame = self.face.faceProposal.bbox_defaultFrame
 
