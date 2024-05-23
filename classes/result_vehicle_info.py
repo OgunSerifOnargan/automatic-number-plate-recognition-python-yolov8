@@ -4,30 +4,29 @@ from global_functions.app_constants import base_url
 from services.utils import generate_uid
 
 API_URL = base_url
-class result_person_info:
+class result_vehicle_info:
 
-    def __init__(self, person_obj, camId):
+    def __init__(self, vehicle_obj, camId):
         self.camId = camId
-        self.face_img = person_obj.face.img
-        self.face_img_base64 = _set_img_base64(person_obj.face.img)
-        self.name = person_obj.name
-        self.trackerId = person_obj.trackerId
-        self.location_state = person_obj.location_state
+        self.licensePlate_img = vehicle_obj.img_skewed_plate_default
+        self.licensePlate_img_base64 = _set_img_base64(vehicle_obj.img_skewed_plate_default)
+        self.licenseCode = vehicle_obj.licenseCode
+        self.trackerId = vehicle_obj.trackerId
+        self.location_state = vehicle_obj.location_state
 
-        self.body_img = person_obj.img
-        self.body_img_base64 = _set_img_base64(person_obj.img)
-        self.uid_for_img_face = generate_uid()
+        self.body_img = vehicle_obj.img_body
+        self.body_img_base64 = _set_img_base64(vehicle_obj.img_body)
+        self.uid_for_img_licensePlate = generate_uid()
         self.uid_for_img_body = generate_uid()
 
     def construct_body_info(self):
-        print('3862:name, 3863:empty, 3866:trackerId, 3867:empty, 3868:location_state, 3863:img_face, 3867:img_body')
         body = {
                 "PostCrFormAnswers": [
                     {
                     "ID": -1, #// her zaman -1
                     "CRF_FIELDS_ID": 3862,
                     "CRF_FORMS_ID": 414,
-                    "ROWDATARAW": self.name,  #//// formun ilk fieldı, buraya label bilgisini yazacağız
+                    "ROWDATARAW": self.licenseCode,  #//// formun ilk fieldı, buraya label bilgisini yazacağız
                     "ROWDATARAW2": "",
                     "rowState": 0
                     },
@@ -36,7 +35,7 @@ class result_person_info:
                     "CRF_FIELDS_ID": 3863, #///Formun 2.fieldı buraya dosya göndereceğimin bilgisini yazacağım. 
                     "CRF_FORMS_ID": 414,
                     "ROWDATARAW": "", #//her zaman boş
-                    "ROWDATARAW2": self.uid_for_img_face, #// göndermeden önce ürettiğimiz UID
+                    "ROWDATARAW2": self.uid_for_img_licensePlate, #// göndermeden önce ürettiğimiz UID
                     "rowState": 0
                     },
                     {
@@ -81,12 +80,12 @@ class result_person_info:
         body = {
                 "UploadList": [
                     {
-                    "BatchID": self.uid_for_img_face, #// bu dosya gönderimi için yukarda oluşturduğun file uid
+                    "BatchID": self.uid_for_img_licensePlate, #// bu dosya gönderimi için yukarda oluşturduğun file uid
                     "FileDetails": [
                         {
-                        "FILENAME": f"{self.name}_face.png",
+                        "FILENAME": f"{self.licenseCode}_licensePlate.png",
                         "RESOURCEID": 3863, #// bu önemli, formun 2.fieldının ID’si
-                        "IMGBASE64": self.face_img_base64,
+                        "IMGBASE64": self.licensePlate_img_base64,
                         "ARCHID": -1, #// her zaman -1
                         "ARCHIVECONTEXTID": -1, #// her zaman -1
                         
@@ -97,7 +96,7 @@ class result_person_info:
                     "BatchID": self.uid_for_img_body, #// bu dosya gönderimi için yukarda oluşturduğun file uid
                     "FileDetails": [
                         {
-                        "FILENAME": f"{self.name}_body.png",
+                        "FILENAME": f"{self.licenseCode}_body.png",
                         "RESOURCEID": 3867, #// bu önemli, formun 4.fieldının ID’si
                         "IMGBASE64": self.body_img_base64,
                         "ARCHID": -1, #// her zaman -1
@@ -146,7 +145,7 @@ class result_person_info:
 
     class CustomEncoder(json.JSONEncoder):
         def default(self, obj):
-            if isinstance(obj, result_person_info):
+            if isinstance(obj, result_vehicle_info):
                 return obj
 
             return json.JSONEncoder.default(self, obj)

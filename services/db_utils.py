@@ -33,43 +33,43 @@ def append_object_to_json(file_path, obj):
         with open(file_path, 'w') as json_file:
             json.dump(data, json_file)
         
-        print("Person appended to JSON file:", file_path)
+        print("vehicle appended to JSON file:", file_path)
     else:
         print("Error: JSON file not found.")
 
-def serialize_person(person_obj):
+def serialize_vehicle(vehicle_obj):
     return {
-        "detection_time": person_obj.detection_time,
-#        "img_person": person_obj.img.tolist(),
-        "bbox_person": person_obj.bbox,
-        "entranceTime": person_obj.entranceTime,
-        "exitTime": person_obj.exitTime,
-        "face": serialize_face(person_obj.face),  # Assuming serialize_face() is defined
-        "name": person_obj.name
+        "detection_time": vehicle_obj.detection_time,
+#        "img_vehicle": vehicle_obj.img.tolist(),
+        "bbox_vehicle": vehicle_obj.bbox,
+        "entranceTime": vehicle_obj.entranceTime,
+        "exitTime": vehicle_obj.exitTime,
+        "licensePlate": serialize_licensePlate(vehicle_obj.licensePlate),  # Assuming serialize_licensePlate() is defined
+        "licenseCode": vehicle_obj.licenseCode
     }
-def serialize_face(face_obj):
+def serialize_licensePlate(licensePlate_obj):
     return {
-        "faceProposal": serialize_face_proposal(face_obj.faceProposal),
-#        "img": face_obj.img.tolist(),
-        "bbox_coords": face_obj.bbox_coords,
-        #"encodedVector": face_obj.encodedVector.tolist(),
-        "name": face_obj.name,
-        "face_finalizer": face_obj.face_finalizer,
-        "unknown_count": face_obj.unknown_count,
-        "isFaceIdentifiedProperly": face_obj.isFaceIdentifiedProperly
+        "licensePlateProposal": serialize_licensePlate_proposal(licensePlate_obj.licensePlateProposal),
+#        "img": licensePlate_obj.img.tolist(),
+        "bbox_coords": licensePlate_obj.bbox_coords,
+        #"encodedVector": licensePlate_obj.encodedVector.tolist(),
+        "licenseCode": licensePlate_obj.licenseCode,
+        "licensePlate_finalizer": licensePlate_obj.licensePlate_finalizer,
+        "unknown_count": licensePlate_obj.unknown_count,
+        "islicensePlateIdentifiedProperly": licensePlate_obj.islicensePlateIdentifiedProperly
     }
 
-def serialize_face_proposal(face_proposal_obj):
+def serialize_licensePlate_proposal(licensePlate_proposal_obj):
     return {
-        "bbox": face_proposal_obj.bbox,
-        "bbox_defaultFrame": face_proposal_obj.bbox_defaultFrame,
-        "bbox_dlib": face_proposal_obj.bbox_dlib,
-#        "img": face_proposal_obj.img.tolist(),
-        #"encodedVector": face_proposal_obj.encodedVector.tolist(),
-        "name": face_proposal_obj.name,
-        "yolo_bbox": face_proposal_obj.yolo_bbox,
-        "dlib_bbox": face_proposal_obj.dlib_bbox,
-        "bbox_defaultFrame_yolo": face_proposal_obj.bbox_defaultFrame_yolo
+        "bbox": licensePlate_proposal_obj.bbox,
+        "bbox_defaultFrame": licensePlate_proposal_obj.bbox_defaultFrame,
+        "bbox_dlib": licensePlate_proposal_obj.bbox_dlib,
+#        "img": licensePlate_proposal_obj.img.tolist(),
+        #"encodedVector": licensePlate_proposal_obj.encodedVector.tolist(),
+        "licenseCode": licensePlate_proposal_obj.licenseCode,
+        "yolo_bbox": licensePlate_proposal_obj.yolo_bbox,
+        "dlib_bbox": licensePlate_proposal_obj.dlib_bbox,
+        "bbox_defaultFrame_yolo": licensePlate_proposal_obj.bbox_defaultFrame_yolo
     }
 def read_json_as_dict(file_path):
     # Read the JSON file and load its contents into a dictionary
@@ -77,18 +77,18 @@ def read_json_as_dict(file_path):
         data = json.load(json_file)
     return data
 
-def append_item_to_json(tracker_id, person_obj, file_path):
+def append_item_to_json(tracker_id, vehicle_obj, file_path):
     # Check if the file exists
     if os.path.exists(file_path):
         # Read the existing JSON data
         with open(file_path, 'r') as json_file:
             data = json.load(json_file)
         
-        # Serialize the person object
-        serialized_person = serialize_person(person_obj)
+        # Serialize the vehicle object
+        serialized_vehicle = serialize_vehicle(vehicle_obj)
         
         # Assign the new item to the JSON data
-        data[str(tracker_id)] = serialized_person
+        data[str(tracker_id)] = serialized_vehicle
         
         # Write the updated JSON data back to the file
         with open(file_path, 'w') as json_file:

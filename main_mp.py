@@ -1,39 +1,36 @@
-#TODO: Fonksiyon süre testlerini yap ve MP'ye alabileceklerini al
-#TODO: Piyasadaki optimize person modellerini araştır Şuan yolov8n kullanıyoruz.
-#TODO: DB'ye hangi bilgileri göndereceğiz
-#TODO: DB'den veri gelmeye başlayınca durma koşulunu manipüle et
-#TODO: DB'ye SSMS üzrinden nasıl erişilebileceğini ve tablo oluşturulacağını öğren.
-#TODO: DB'de girdi çıktı yapısını kur
-
 import multiprocessing.managers
 import multiprocessing, time
-from classes.result_person_info import post_results_MP
+from classes.result_vehicle_info import post_results_MP
 from services.db_utils import create_json, reassign_tracker_ids
 from services.displayServices import display_frames
 from services.frameCollectionServices import collect_frames
-from personDet import personDet
-from services.utils import append_string_to_csv
+from vehicleDet import vehicleDet, vehicleDet
+from services.utils import append_string_to_csv, get_video_properties
 import supervision as sv
 from tools.coords_getter_v3 import get_coords
-from faceId import faceId
+from plateId import plateId
 import cv2
 
 if __name__ == '__main__':
     manager = multiprocessing.Manager()
-    faceRec_queue = multiprocessing.Queue(maxsize=50)
-    faceDet_to_faceId_queue = multiprocessing.Queue()
-    faceId_to_faceDet_queue = multiprocessing.Queue()
+    rawFrame_queue = multiprocessing.Queue()
+    licensePlateDet_to_plateId_queue = multiprocessing.Queue(maxsize=1)
+    plateId_to_licensePlateDet_queue = multiprocessing.Queue()
+    info_transfer_queue = multiprocessing.Queue()
     display_queue = multiprocessing.Queue(maxsize=1)
     post_queue = multiprocessing.Queue()
 #    recording_queue = multiprocessing.Queue(maxsize=1000)
     stop_event = multiprocessing.Event()
-    recorder_option = "rtsp://admin:endurans2024.@192.168.0.161:554/Streaming/channels/1"
+    recorder_option ="/Users/onarganogun/Downloads/y2mate.com - Güvenlik Kamerasıyla Plaka Okunur mu  HaikonHikvision_1080p.mp4"
+    fps, width, height = get_video_properties(recorder_option)
+    frame_size = (width, height)
+    output_filename = "/Users/onarganogun/Downloads/plateRec.mp4"
     CAM_ID = 1
     display_option = 1
     mode_option = 2
     time_test = 0
-    model_name = "deepface_ssd"
-    append_string_to_csv("person Location Checker has been started...", 'log.csv')
+    model_name = "yolo"
+    append_string_to_csv("vehicle Location Checker has been started...", 'log.csv')
     create_json("db_json")
     reassign_tracker_ids("db_json")
 
@@ -46,19 +43,19 @@ if __name__ == '__main__':
         lines_sv.append([LINE_START, LINE_END])
 
     frame_collector_process = multiprocessing.Process(target=collect_frames, 
-                                                        args=(stop_event, faceRec_queue, recorder_option))
-    personDet_process = multiprocessing.Process(target=personDet,
-                                                args=(stop_event, faceRec_queue, faceDet_to_faceId_queue, faceId_to_faceDet_queue, display_queue, post_queue, lines_sv, CAM_ID))
-    faceId_process = multiprocessing.Process(target=faceId,
-                                                args=(stop_event, faceDet_to_faceId_queue, faceId_to_faceDet_queue, post_queue, model_name, CAM_ID))    
+                                                        args=(stop_event, rawFrame_queue, recorder_option))
+    vehicleDet_process = multiprocessing.Process(target=vehicleDet,
+                                                args=(stop_event, rawFrame_queue, licensePlateDet_to_plateId_queue, plateId_to_licensePlateDet_queue, display_queue, post_queue, info_transfer_queue, lines_sv, CAM_ID))
+    plateId_process = multiprocessing.Process(target=plateId,
+                                                args=(stop_event, licensePlateDet_to_plateId_queue, plateId_to_licensePlateDet_queue, post_queue, info_transfer_queue, model_name, CAM_ID))    
     
     display_process = multiprocessing.Process(target= display_frames,
-                                                args=(stop_event, display_queue))
+                                                args=(stop_event, display_queue, output_filename, fps, frame_size))
     post_process = multiprocessing.Process(target=post_results_MP,
                                            args=(stop_event, post_queue))
     frame_collector_process.start()
-    personDet_process.start()
-    faceId_process.start()
+    vehicleDet_process.start()
+    plateId_process.start()
     post_process.start()
     if display_option == 1:
         display_process.start()
@@ -71,11 +68,10 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         stop_event.set()
         frame_collector_process.join()
-        personDet_process.join()
-        faceId_process.join()
+        vehicleDet_process.join()
+        plateId_process.join()
         post_process.join()
         if display_option == 1: 
             display_process.join()
 
     #endregion
-

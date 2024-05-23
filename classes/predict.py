@@ -1,150 +1,90 @@
 from ultralytics import YOLO
 import supervision as sv
 import numpy as np
-import face_recognition
 import os
 import cv2
 from services.utils import get_objects_within_time_interval
-from ultralight_face_detector.vision.ssd.mb_tiny_RFB_fd import create_Mb_Tiny_RFB_fd, create_Mb_Tiny_RFB_fd_predictor
-from ultralight_face_detector.vision.ssd.config.fd_config import define_img_size
 from supervision.detection.core import Detections
-from deepface import DeepFace
 import csv
 import pandas as pd
-class face_predictor:
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel
+from PIL import Image
+
+class licensePlate_predictor:
     def __init__(self):
         #YOLO
-        self.face_detector = YOLO("/Users/onarganogun/Downloads/best.pt")
+        self.licensePlate_detector = YOLO("models/license_plate_detector.pt")
         self.yoloResult = None
-        #Ultralight
-        self.lightweight_predictor = load_lightweight_model()
         self.refresh_needed = False
 
-        #Predictor: Face
-        self.name = None
-        self.known_face_indexes, self.known_face_names, self.known_face_encodings = read_known_faces_from_csv_file("known_faces.csv")
+        #Predictor: licensePlate
+        self.OCR_processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-printed")
+        self.OCR_model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-printed")
+        self.licenseCode = None
 
-    def predict_face_dlib(self, img_person_body):
-        if not img_person_body.shape[1] == 0:
-            face_locations = face_recognition.face_locations(img_person_body, model="hog")
-            return face_locations
+    def predict_licensePlate_yolo(self, vehicle):
+        if not vehicle.img_body.shape[1] == 0:
+            result = self.licensePlate_detector(vehicle.img_body, verbose=False, device="mps")
+            licensePlate_locations = result[0].boxes.xyxy.tolist()
+            return licensePlate_locations
         else:
             return None
-        
-    def predict_face_ultralight(self, img_person_body):
-        if not img_person_body.shape[1] == 0:
-            boxes, labels, probs = self.lightweight_predictor.predict(img_person_body, 1, 0.70)
-        return boxes
     
-    def predict_face_yolo(self, img_person_body):
-        if not img_person_body.shape[1] == 0:
-            result = self.face_detector(img_person_body, verbose=False)
-            face_locations = result[0].boxes.xyxy
-            return face_locations
-        else:
-            return None
-        
-    def predict_face_deepface_SSD(self, img_person_body):
-        try:
-            if not img_person_body.shape[1] == 0:
-                obj = DeepFace.extract_faces(img_path = img_person_body, detector_backend = "ssd", align=True)
-        except:
-            obj = []
-        return obj
-    
-    def predict_face(self, model_name, person):
-        if model_name == "yolo":
-            bbox_face_proposals = self.predict_face_yolo(person.img)
-        if model_name == "dlib":
-            bbox_face_proposals = self.predict_face_dlib(person.img)
-        if model_name == "ultralight":
-            bbox_face_proposals = self.predict_face_ultralight(person.img)
-        if model_name == "deepface_ssd":
-            bbox_face_proposals = self.predict_face_deepface_SSD(person.img)
-        return bbox_face_proposals
-    
-    def identify_face(self, person, model_name, threshold):
-        #encode the face
-        if model_name in ["yolo", "ultralight", "deepface_ssd"]:
-            person.face.faceProposal.encodedVector = np.array(face_recognition.face_encodings(np.ascontiguousarray(person.img[:, :, ::-1]), 
-                                                                                            [person.face.faceProposal.dlib_bbox]))
-            person.face.encodedVector = person.face.faceProposal.encodedVector
-        if model_name == "dlib":
-            person.face.faceProposal.encodedVector = face_recognition.face_encodings(np.ascontiguousarray(person.face.img[:, :, ::-1]))
-        #get binary list of matches according to the constraints
-        matches = face_recognition.compare_faces(np.array(self.known_face_encodings), np.array(person.face.faceProposal.encodedVector).reshape(1, -1))
-        person.face.faceProposal.name = ""
-        #calculate face distances between known_faces and our img
-        face_distances = face_recognition.face_distance(np.array(self.known_face_encodings), np.array(person.face.faceProposal.encodedVector))
-        #get the name of best match
-        best_match_index = np.argmin(face_distances)
-        print(face_distances[best_match_index])
-        if matches[best_match_index] and face_distances[best_match_index]<=threshold:
-            #person.face.faceProposal.name = self.known_face_names[best_match_index]
-            person.face.faceProposal.name = self.known_face_indexes[best_match_index]
-            print(person.face.faceProposal.name)
-        return person
+    def predict_license_number(self, vehicle):
+        image_cv2_rgb = cv2.cvtColor(vehicle.img_skewed_plate, cv2.COLOR_BGR2RGB)
+        # Convert the cv2 image array to PIL Image
+        image = Image.fromarray(image_cv2_rgb)
+        pixel_values = self.OCR_processor(image, return_tensors="pt").pixel_values
+        generated_ids = self.OCR_model.generate(pixel_values, max_length=12)
+        generated_text = self.OCR_processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        vehicle.licensePlate.proposal.licenseCode = generated_text
+        return vehicle
 
-def register_new_unidentified_face(person):
-    face_encoding = person.face.encodedVector[0]
-    # Read the CSV file into a DataFrame
-    df = pd.read_csv('known_faces.csv')
-    # Getting the next index value
-    next_index = df.index[-1] + 2
-    # Creating a new row with the next index value appended to 'Encoding' and 'Name' as null
-    new_row = pd.DataFrame({'Index': [next_index], 'Name': [None], 'Encoding': str(face_encoding)})
-    # Appending the new row to the DataFrame
-    df = pd.concat([df, new_row], ignore_index=True)
-    # Save the DataFrame back to CSV
-    df.to_csv('known_faces.csv', index=False)
-    print(f'Unidentified label is attained to {next_index}')
-    return next_index
-
-class person_predictor:
+class vehicle_predictor:
     def __init__(self):
-        #Person Detector
-        self.person_detector = YOLO('models/yolov8n.pt')
-        self.person_list = [0]
+        #vehicle Detector
+        self.vehicle_detector = YOLO('models/yolov8n.pt')
+        self.vehicle_list = [2, 3, 5, 7]
         self.box_annotator = sv.BoxAnnotator(thickness=2, text_thickness=2, text_scale=1)
         #Predictor: Tracking
-        self.tracker = sv.ByteTrack(track_thresh=0.25, track_buffer=30, match_thresh=0.8, frame_rate=30)
+        self.tracker = sv.ByteTrack(track_activation_threshold=0.25, lost_track_buffer=30, minimum_matching_threshold=0.8, frame_rate=30)
         #Results: Tracking
         self.trackingResult = None
         self.modified_solo_detection_for_lineCounter = None
         self.trackingResult_labels = None
         self.solo_detections_dict = {}
-        self.person_annotated_frame = None
+        self.vehicle_annotated_frame = None
 
-    def predict_person(self, frame):
-            self.yoloResult = self.person_detector.predict(frame, verbose=False, device="mps")[0]
+    def predict_vehicle(self, frame):
+            self.yoloResult = self.vehicle_detector.predict(frame, verbose=False, device="mps", conf=0.50)[0]
             detections_tracking = sv.Detections.from_ultralytics(self.yoloResult)
-            self.trackingResult = detections_tracking[np.isin(detections_tracking.class_id, self.person_list)]
+            self.trackingResult = detections_tracking[np.isin(detections_tracking.class_id, self.vehicle_list)]
             self.trackingResult = self.tracker.update_with_detections(self.trackingResult)
 
-    def assign_final_name_for_display(self, people):
+    def assign_final_licenseCode_for_display(self, vehicles):
             self.trackingResult_labels = []
             for confidence, class_id, tracker_id in zip(self.trackingResult.confidence, self.trackingResult.class_id, self.trackingResult.tracker_id):
-                if tracker_id in people:
-                    if people[tracker_id].face.name != None:
-                        self.trackingResult_labels.append(f"#{tracker_id} {people[tracker_id].face.name} {confidence:0.2f}")
+                if tracker_id in vehicles:
+                    if vehicles[tracker_id].licenseCode != None:
+                        self.trackingResult_labels.append(f"#{tracker_id} {vehicles[tracker_id].licenseCode} {confidence:0.2f}")
                     else:
-                        self.trackingResult_labels.append(f"#{tracker_id} {self.person_detector.model.names[class_id]} {confidence:0.2f}")
+                        self.trackingResult_labels.append(f"#{tracker_id} {self.vehicle_detector.model.names[class_id]} {confidence:0.2f}")
                 else:
-                    self.trackingResult_labels.append(f"#{tracker_id} {self.person_detector.model.names[class_id]} {confidence:0.2f}")
+                    self.trackingResult_labels.append(f"#{tracker_id} {self.vehicle_detector.model.names[class_id]} {confidence:0.2f}")
             
-    def annotate_people(self, frame):
-        self.person_annotated_frame = self.box_annotator.annotate(scene=frame, detections=self.trackingResult, labels=self.trackingResult_labels)
+    def annotate_vehicles(self, frame):
+        self.vehicle_annotated_frame = self.box_annotator.annotate(scene=frame, detections=self.trackingResult, labels=self.trackingResult_labels)
 
-    def display_results(self, display_queue, frame, people):
+    def display_results(self, display_queue, frame, vehicles):
         #Log Display
-        people_in_time_interval = get_objects_within_time_interval(people, 30)
+        vehicles_in_time_interval = get_objects_within_time_interval(vehicles, 30)
         # Display rows on top right corner of the frame
-        display_frame = _display_rows_on_frame(people_in_time_interval, frame)
-        # person Annotator
-        self.annotate_people(display_frame)
-        #Face Image Displayer
+        display_frame = _display_rows_on_frame(vehicles_in_time_interval, frame)
+        # vehicle Annotator
+        self.annotate_vehicles(display_frame)
+        #licensePlate Image Displayer
 
-        display_queue.put(self.person_annotated_frame)
+        display_queue.put(self.vehicle_annotated_frame)
 
     def crop_objects(self, image):
         cropped_images_info = {}
@@ -157,7 +97,7 @@ class person_predictor:
             cropped_images_info[tracker_id] = [cropped_image, cropped_bbox]
         return cropped_images_info
     
-    def separate_detections(self, person, trackerId):
+    def separate_detections(self, vehicle, trackerId):
         for i in range(len(self.trackingResult.xyxy)):
             if self.trackingResult.tracker_id[i:i+1][0] == trackerId:
                 solo_detection = Detections(
@@ -166,67 +106,33 @@ class person_predictor:
                     class_id=self.trackingResult.class_id[i:i+1],
                     tracker_id=self.trackingResult.tracker_id[i:i+1]
                 )
-                person.set_solo_detection(solo_detection)
-        return person
+                vehicle.set_solo_detection(solo_detection)
+        return vehicle
 
 class predictors:
     def __init__(self):
-        self.face_pred = face_predictor()
-        self.person_pred = person_predictor()
-
-
-def load_lightweight_model():
-    define_img_size(640)
-    label_path = "ultralight_face_detector/models/voc-model-labels.txt"
-    class_names = [name.strip() for name in open(label_path).readlines()]
-    net = create_Mb_Tiny_RFB_fd(len(class_names), is_test=True)
-    lightweight_predictor = create_Mb_Tiny_RFB_fd_predictor(net, candidate_size=1500)
-    net.load("ultralight_face_detector/models/pretrained/version-RFB-320.pth")
-    return lightweight_predictor
-
-def person_photo_registration(folder_path):
-    known_face_encodings = []
-    known_face_names = []
-
-    # Loop through all files in the folder
-    for filename in os.listdir(folder_path):
-        if filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png") or filename.endswith(".JPG"):
-            # Load the image
-            image_path = os.path.join(folder_path, filename)
-            person_image = face_recognition.load_image_file(image_path)
-
-            # Extract face encoding
-            face_encoding = face_recognition.face_encodings(person_image)
-            
-            # Ensure that the image contains exactly one face
-            if len(face_encoding) == 1:
-                known_face_encodings.append(face_encoding[0])
-                
-                # Extract the name from the filename (excluding the extension)
-                known_face_names.append(os.path.splitext(filename)[0])
-            else:
-                print(f"Skipping {filename} as it doesn't contain exactly one face.")
-    return known_face_names, known_face_encodings
+        self.licensePlate_pred = licensePlate_predictor()
+        self.vehicle_pred = vehicle_predictor()
     
-def _display_rows_on_frame(people_in_interval, frame):
+def _display_rows_on_frame(vehicles_in_interval, frame):
     y_offset = 120  # Starting y-coordinate for displaying text
-    for i, person in enumerate(people_in_interval):
-        if person.name != None:
-            text = f"{person.detection_time}: {person.name}"
+    for i, vehicle in enumerate(vehicles_in_interval):
+        if vehicle.licenseCode != None:
+            text = f"{vehicle.detection_time}: {vehicle.licenseCode}"
             frame = cv2.putText(frame, text, (15, y_offset + i * 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 2, cv2.LINE_AA)
     return frame
 
-def read_known_faces_from_csv_file(file_path):
-    known_face_indexes = []
-    known_face_names = []
-    known_face_encodings = []
+def read_known_licensePlates_from_csv_file(file_path): #TODO: Güncelle
+    known_licensePlate_indexes = []
+    known_licensePlate_licenseCodes = []
+    known_licensePlate_encodings = []
 
     with open(file_path, 'r') as csvfile:
         csv_reader = csv.DictReader(csvfile)
 
         for row in csv_reader:
-            known_face_indexes.append(int(row['Index']))
-            known_face_names.append(row['Name'])
-            known_face_encodings.append([float(val) for val in row['Encoding'][1:-1].split()])
+            known_licensePlate_indexes.append(int(row['Index']))
+            known_licensePlate_licenseCodes.append(row['licenseCode'])
+            known_licensePlate_encodings.append([float(val) for val in row['Encoding'][1:-1].split()])
 
-    return known_face_indexes, known_face_names, known_face_encodings
+    return known_licensePlate_indexes, known_licensePlate_licenseCodes, known_licensePlate_encodings
